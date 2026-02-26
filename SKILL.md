@@ -1,32 +1,56 @@
 ---
 name: crypto-analyzer
-description: Analyze cryptocurrency market data using the CoinStats API. Use when you need to fetch and summarize market cap, fear-and-greed index, news, or top coins, or when wiring CLI usage, configuration, and output formatting for this project.
+description: Fetch real-time cryptocurrency market data, including global capitalization, Fear and Greed Index, top coin prices, and latest industry news.
+homepage: https://github.com/example/crypto-analyzer
+metadata: {"nanobot":{"emoji":"📈","requires":{"bins":["crypto-analyzer"]},"install":[{"id":"build","kind":"shell","command":"make build && make install","label":"Build and install crypto-analyzer"}]}}
 ---
 
-# Crypto Analyzer Skill
+# Crypto Analyzer
 
-## Goals
-- Fetch market cap, fear-and-greed index, news, and optionally coins.
-- Keep output concise and readable.
-- Respect environment-based configuration.
+A Go-based CLI tool that aggregates data from the Coinstats API to provide a comprehensive snapshot of the cryptocurrency market.
 
-## Required inputs
-- Read `COINSTATS_API_KEY` from environment.
+## When to use (trigger phrases)
 
-## Workflow
-1. Parse flags early.
-2. Validate `COINSTATS_API_KEY` and fail fast if missing.
-3. Create a context with a bounded timeout.
-4. Fetch data concurrently with a small worker limit.
-5. Deduplicate news by title.
-6. Print market cap, fear-and-greed, and news; print coins only when `-coins` is set.
+Use this skill when the user asks for:
+- “How is the crypto market doing?”
+- “What is the current Fear and Greed index?”
+- “Show me the latest crypto news.”
+- “Check Bitcoin/Ethereum prices.”
+- “Get a market overview.”
+- “run crypto-analyzer”
 
-## Implementation notes
-- Keep `Service` usage isolated in a single orchestration function.
-- Avoid duplicate API calls for the same dataset.
-- Ensure goroutines cannot leak on early error or context cancellation.
-- Use buffered error channel and aggregate the first error.
+## Quick start
 
-## Output expectations
-- Use stable section headings: `Market Cap`, `Fear and Greed Index`, `NEWS`, `COINS`.
-- Print timestamps and numeric values with clear units.
+The tool provides a combined report of market stats, sentiment, prices, and news in one go:
+
+```bash
+crypto-analyzer
+```
+
+## Requirements & Setup
+You must have a Coinstats API Key set in your environment:
+```bash
+export COINSTATS_API_KEY=<YOUR_API_KEY>
+```
+
+## Output Data Points
+The command returns four distinct sections wrapped in XML-like tags for easy parsing:
+1. Market Capitalization
+Includes total market cap, 24h trading volume, and Bitcoin dominance percentage.
+  - **Key Metric**: Look at "24-hour change" to determine if the market is trending up or down.
+2. Fear and Greed Index
+Provides market sentiment (0-100).
+  - **Classifications**: Extreme Fear, Fear, Neutral, Greed, Extreme Greed.
+  - Includes historical values (Yesterday and Last Week) to show sentiment trends.
+3. Coins
+Detailed stats for major assets (BTC, ETH, etc.):
+  - Price: Current USD value.
+  - Change: Percentage movement over 24 hours and 7 days.
+4. News
+A list of the latest headlines including:
+  - Title & Description: Summary of the event.
+  - Source & Link: Original URL for deep diving.
+  - Affected Coins: Identifies which specific tokens are relevant to the news item.
+  
+## Troubleshooting
+If the command fails, ensure the binary is in your path (usually /usr/local/bin/) and the COINSTATS_API_KEY is valid and exported in the current shell session.
