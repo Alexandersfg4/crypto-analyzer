@@ -19,6 +19,7 @@ const (
 	baseURL      = "https://openapiv1.coinstats.app"
 	limitNews    = 20
 	limitWorkers = 5
+	limitCoins   = 100
 	timeoutWork  = time.Second * 10
 )
 
@@ -39,6 +40,7 @@ func main() {
 
 	showMarketCap(gotData.marketCap)
 	showFearAndGreed(gotData.fearAndGreed)
+	showCoins(gotData.coins)
 	showNews(gotData.news)
 }
 
@@ -46,6 +48,7 @@ type data struct {
 	news         models.GetNewsResponse
 	fearAndGreed models.FearAndGreed
 	marketCap    models.MarketCap
+	coins        models.Coins
 }
 
 func getData(ctx context.Context, apiKey string) (data, error) {
@@ -54,6 +57,7 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 	var wg sync.WaitGroup
 	var fearAndGreed models.FearAndGreed
 	var marketCap models.MarketCap
+	var coins models.Coins
 
 	ctx, c := context.WithTimeout(ctx, timeoutWork)
 	defer c()
@@ -65,6 +69,7 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 	errorsCh := make(chan error)
 	fearAndGreedCh := make(chan models.FearAndGreed)
 	marketCapCh := make(chan models.MarketCap)
+	coinsCh := make(chan models.Coins)
 	mapNews := make(map[string]models.News)
 
 	jobs := []func(){
@@ -140,6 +145,20 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 
 			marketCapCh <- gotMarketCap
 		},
+		func() {
+			defer func() {
+				sem <- struct{}{}
+			}()
+			defer wg.Done()
+
+			gotCoins, err := srv.GetCoins(ctx, limitCoins)
+			if err != nil {
+				errorsCh <- fmt.Errorf("Error getting coins: %w", err)
+				return
+			}
+
+			coinsCh <- gotCoins
+		},
 	}
 
 	go func() {
@@ -193,6 +212,23 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 		}
 	}()
 
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case err = <-errorsCh:
+				return
+			case c, ok := <-coinsCh:
+				if !ok {
+					return
+				}
+
+				coins = c
+			}
+		}
+	}()
+
 	for _, j := range jobs {
 		wg.Add(1)
 
@@ -206,6 +242,8 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 	close(errorsCh)
 	close(newsCh)
 	close(fearAndGreedCh)
+	close(marketCapCh)
+	close(coinsCh)
 
 	if err != nil {
 		return result, err
@@ -221,10 +259,12 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 		news:         newsResult,
 		fearAndGreed: fearAndGreed,
 		marketCap:    marketCap,
+		coins:        coins,
 	}, nil
 }
 
 func showNews(gotNews models.GetNewsResponse) {
+	fmt.Println("NEWS")
 	for _, news := range gotNews {
 		fmt.Printf("Title: %s\n", news.Title)
 		if news.Description != "" {
@@ -238,8 +278,9 @@ func showNews(gotNews models.GetNewsResponse) {
 		if len(coins) > 0 {
 			fmt.Println("Affected coins: ", coins)
 		}
-		fmt.Println()
 	}
+
+	fmt.Println()
 }
 
 func showFearAndGreed(gotFearAndGreed models.FearAndGreed) {
@@ -258,11 +299,38 @@ func showFearAndGreed(gotFearAndGreed models.FearAndGreed) {
 
 func showMarketCap(gotMarketCap models.MarketCap) {
 	fmt.Println("Market Cap")
-	fmt.Printf("Total market capitalization of all cryptocurrencies : %d$\n", gotMarketCap.MarketCap)
-	fmt.Printf("Total 24-hour trading volume across all cryptocurrencies: %d$\n", gotMarketCap.Volume)
-	fmt.Printf("Bitcoin's percentage share of the total cryptocurrency market capitalization: %f%%\n", gotMarketCap.BtcDominance)
-	fmt.Printf("24-hour change in total market capitalization: %f%%\n", gotMarketCap.MarketCapChange)
+	fmt.Printf(
+		"Total market capitalization of all cryptocurrencies : %d$\n",
+		gotMarketCap.MarketCap,
+	)
+	fmt.Printf(
+		"Total 24-hour trading volume across all cryptocurrencies: %d$\n",
+		gotMarketCap.Volume,
+	)
+	fmt.Printf(
+		"Bitcoin's percentage share of the total cryptocurrency market capitalization: %f%%\n",
+		gotMarketCap.BtcDominance,
+	)
+	fmt.Printf(
+		"24-hour change in total market capitalization: %f%%\n",
+		gotMarketCap.MarketCapChange,
+	)
 	fmt.Printf("24-hour change in total trading volume: %f%%\n", gotMarketCap.VolumeChange)
 	fmt.Printf("24-hour change in Bitcoin dominance: %f%%\n", gotMarketCap.BtcDominanceChange)
+	fmt.Println()
+}
+
+func showCoins(gotCoins models.Coins) {
+	fmt.Println("COINS")
+	for _, c := range gotCoins.Result {
+		fmt.Printf("Name: %s\n", c.Name)
+		fmt.Printf("Symbol: %s\n", c.Symbol)
+		fmt.Printf("Price: %f\n", c.Price)
+		fmt.Printf("Volume: %d$\n", c.Volume)
+		fmt.Printf("Market Cap: %d$\n", c.MarketCap)
+		fmt.Printf("Price changed 24 hours: %f%%\n", c.PriceChange1D)
+		fmt.Printf("Price changed 7 days: %f%%\n", c.PriceChange1W)
+	}
+
 	fmt.Println()
 }

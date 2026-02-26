@@ -18,5 +18,10 @@ make install
 
 5. Get crypto data by passing coins to be analyzed
 ```sh
-crypto-analyzer --coins=BTC,ETH
+crypto-analyzer
+```
+
+Result example:
+```sh
+
 ```
