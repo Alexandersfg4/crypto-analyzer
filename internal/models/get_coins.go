@@ -10,32 +10,33 @@ type Coins struct {
 		PageCount       int  `json:"pageCount,omitzero"`
 	} `json:"meta"`
 	Result []struct {
-		AvailableSupply       int      `json:"availableSupply,omitzero"`
-		AvgChange             float64  `json:"avgChange,omitzero"`
-		ContractAddress       any      `json:"contractAddress"`
-		ContractAddresses     []any    `json:"contractAddresses"`
-		Decimals              int      `json:"decimals,omitzero"`
+		AvailableSupply   int    `json:"availableSupply,omitzero"`
+		Color             string `json:"color,omitempty,omitzero"`
+		ContractAddress   string `json:"contractAddress,omitempty,omitzero"`
+		ContractAddresses []struct {
+			Blockchain      string `json:"blockchain,omitzero"`
+			ContractAddress string `json:"contractAddress,omitzero"`
+		} `json:"contractAddresses"`
+		Decimals              int      `json:"decimals,omitempty,omitzero"`
 		Explorers             []string `json:"explorers"`
-		FullyDilutedValuation int      `json:"fullyDilutedValuation,omitzero"`
+		FullyDilutedValuation float64  `json:"fullyDilutedValuation,omitzero"`
 		Icon                  string   `json:"icon,omitzero"`
 		ID                    string   `json:"id,omitzero"`
-		LiquidityScore        float64  `json:"liquidityScore,omitzero"`
-		MarketCap             int      `json:"marketCap,omitzero"`
-		MarketCapScore        float64  `json:"marketCapScore,omitzero"`
+		IsStable              bool     `json:"isStable,omitempty,omitzero"`
+		MarketCap             float64  `json:"marketCap,omitzero"`
 		Name                  string   `json:"name,omitzero"`
 		Price                 float64  `json:"price,omitzero"`
 		PriceBtc              float64  `json:"priceBtc,omitzero"`
-		PriceChange1D         float64  `json:"priceChange1d,omitzero"`
-		PriceChange1H         float64  `json:"priceChange1h,omitzero"`
-		PriceChange1W         float64  `json:"priceChange1w,omitzero"`
+		PriceChange1D         float64  `json:"priceChange1d"`
+		PriceChange1H         float64  `json:"priceChange1h"`
+		PriceChange1W         float64  `json:"priceChange1w"`
 		Rank                  int      `json:"rank,omitzero"`
-		RedditURL             string   `json:"redditUrl,omitzero"`
-		RiskScore             float64  `json:"riskScore,omitzero"`
+		RedditURL             string   `json:"redditUrl,omitempty,omitzero"`
+		Slug                  string   `json:"slug,omitzero"`
 		Symbol                string   `json:"symbol,omitzero"`
 		TotalSupply           int      `json:"totalSupply,omitzero"`
-		TwitterURL            string   `json:"twitterUrl,omitzero"`
-		VolatilityScore       float64  `json:"volatilityScore,omitzero"`
-		Volume                int      `json:"volume,omitzero"`
-		WebsiteURL            string   `json:"websiteUrl,omitzero"`
+		TwitterURL            string   `json:"twitterUrl,omitempty,omitzero"`
+		Volume                float64  `json:"volume"`
+		WebsiteURL            string   `json:"websiteUrl,omitempty,omitzero"`
 	} `json:"result"`
 }

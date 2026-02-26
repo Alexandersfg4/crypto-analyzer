@@ -5,16 +5,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
 func (s *Service) GetCoins(ctx context.Context, limit int) (models.Coins, error) {
 	var coins models.Coins
+
+	u := url.URL{
+		Path: "/coins",
+		RawQuery: url.Values{
+			"sortBy":  {"marketCap"},
+			"limit":   {strconv.Itoa(limit)},
+			"sortDir": {"desc"},
+		}.Encode(),
+	}
+
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		fmt.Sprintf("/coins?limit=%d", limit),
+		u.String(),
 		nil,
 	)
 	if err != nil {

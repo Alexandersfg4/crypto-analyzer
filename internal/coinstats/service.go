@@ -29,15 +29,15 @@ type rt struct {
 }
 
 func (rt *rt) RoundTrip(req *http.Request) (*http.Response, error) {
-	fullPath, err := url.JoinPath(rt.baseURL, req.URL.Path)
+	baseURL, err := url.Parse(rt.baseURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to join path: %w", err)
+		return nil, fmt.Errorf("failed to parse base URL: %w", err)
 	}
-	gotUrl, err := url.Parse(fullPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse URL: %w", err)
-	}
-	req.URL = gotUrl
+
+	// Resolve against the base URL to preserve query parameters.
+	gotURL := baseURL.ResolveReference(req.URL)
+
+	req.URL = gotURL
 	req.Header.Set(apiHeader, rt.apiKey)
 	return http.DefaultTransport.RoundTrip(req)
 }
