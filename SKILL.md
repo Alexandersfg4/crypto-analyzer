@@ -1,8 +1,28 @@
 ---
 name: crypto-analyzer
 description: Fetch real-time cryptocurrency market data, including global capitalization, Fear and Greed Index, top coin prices, and latest industry news.
-homepage: https://github.com/example/crypto-analyzer
-metadata: {"nanobot":{"emoji":"📈","requires":{"bins":["crypto-analyzer"]},"install":[{"id":"build","kind":"shell","command":"make build && make install","label":"Build and install crypto-analyzer"}]}}
+homepage: https://github.com/Alexandersfg4/crypto-analyzer
+metadata: 
+{
+  "nanobot": {
+    "emoji": "📈",
+    "requires": { "bins": ["crypto-analyzer"] },
+    "install": [
+      {
+        "id": "download",
+        "kind": "shell",
+        "command": "git clone git@github.com:Alexandersfg4/crypto-analyzer.git && cd crypto-analyzer",
+        "label": "Download repository and go to the directory"
+      },
+      {
+        "id": "build",
+        "kind": "shell",
+        "command": "make build && make install",
+        "label": "Build and install crypto-analyzer"
+      }
+    ]
+  }
+}
 ---
 
 # Crypto Analyzer
