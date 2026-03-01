@@ -1,4 +1,5 @@
 ## Crypto Analyzer
+Fetch real-time cryptocurrency market data, including global capitalization, Fear and Greed Index, top coin prices, and latest industry news absolutely **FREE**.
 
 1. Get API key from [coinstats](https://openapi.coinstats.app/) and [coinmarketcap](https://pro.coinmarketcap.com/account)
 2. Set the API key in the environment variable
