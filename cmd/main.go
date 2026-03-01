@@ -27,13 +27,13 @@ var tokens = flag.String("tokens", "", "comma-separated list of tokens")
 func main() {
 	apiKeyCoinstats, ok := os.LookupEnv(envCoinstatsAPIKey)
 	if !ok {
-		fmt.Println("API key not found")
+		fmt.Println("env COINSTATS_API_KEY not found")
 		os.Exit(1)
 	}
 
 	apiKeyCoinmarketcap, ok := os.LookupEnv(envCoinmarketcapAPIKey)
 	if !ok {
-		fmt.Println("API key not found")
+		fmt.Println("env API_KEY_COINMARKETCAP not found")
 		os.Exit(1)
 	}
 
