@@ -1,9 +1,10 @@
 ## Crypto Analyzer
 
-1. Get API key from [coinstats](https://openapi.coinstats.app/)
+1. Get API key from [coinstats](https://openapi.coinstats.app/) and [coinmarketcap](https://pro.coinmarketcap.com/account)
 2. Set the API key in the environment variable
 ```sh
 export COINSTATS_API_KEY=<YOUR_API_KEY>
+export API_KEY_COINMARKETCAP=<YOUR_API_KEY>
 ```
 
 3. Build the binary

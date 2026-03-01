@@ -1,4 +1,4 @@
-package coinstats
+package coinmarketcap
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	apiHeader = "X-API-KEY"
-	baseURL   = "https://openapiv1.coinstats.app"
+	apiHeader = "X-CMC_PRO_API_KEY"
+	baseURL   = "https://pro-api.coinmarketcap.co"
 )
 
 func NewService(apiKey string) *Service {

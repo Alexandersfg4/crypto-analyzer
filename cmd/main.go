@@ -8,21 +8,30 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Alexandersfg4/crypto-analyzer/internal/coinmarketcap"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/coinstats"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
 const (
-	envAPIKey    = "COINSTATS_API_KEY"
-	baseURL      = "https://openapiv1.coinstats.app"
-	limitNews    = 20
-	limitWorkers = 5
-	limitCoins   = 100
-	timeoutWork  = time.Second * 10
+	envCoinstatsAPIKey     = "COINSTATS_API_KEY"
+	envCoinmarketcapAPIKey = "API_KEY_COINMARKETCAP"
+	limitNews              = 20
+	limitWorkers           = 5
+	limitCoins             = 500
+	timeoutWork            = time.Second * 10
 )
 
+var tokens = flag.String("tokens", "", "comma-separated list of tokens")
+
 func main() {
-	apiKey, ok := os.LookupEnv(envAPIKey)
+	apiKeyCoinstats, ok := os.LookupEnv(envCoinstatsAPIKey)
+	if !ok {
+		fmt.Println("API key not found")
+		os.Exit(1)
+	}
+
+	apiKeyCoinmarketcap, ok := os.LookupEnv(envCoinmarketcapAPIKey)
 	if !ok {
 		fmt.Println("API key not found")
 		os.Exit(1)
@@ -32,7 +41,7 @@ func main() {
 
 	ctx := context.Background()
 
-	gotData, err := getData(ctx, apiKey)
+	gotData, err := getData(ctx, apiKeyCoinstats, apiKeyCoinmarketcap)
 	if err != nil {
 		fmt.Println("getting data: ", err.Error())
 		os.Exit(1)
@@ -40,37 +49,38 @@ func main() {
 
 	showMarketCap(gotData.marketCap)
 	showFearAndGreed(gotData.fearAndGreed)
-	showCoins(gotData.coins)
+	showCoins(gotData.listingsLatest)
 	showNews(gotData.news)
 }
 
 type data struct {
-	news         models.GetNewsResponse
-	fearAndGreed models.FearAndGreed
-	marketCap    models.MarketCap
-	coins        models.Coins
+	news           models.GetNewsResponse
+	fearAndGreed   models.FearAndGreed
+	marketCap      models.MarketCap
+	listingsLatest models.ListingsLatestResponse
 }
 
-func getData(ctx context.Context, apiKey string) (data, error) {
+func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (data, error) {
 	var (
 		result       data
 		wg           sync.WaitGroup
 		fearAndGreed models.FearAndGreed
 		marketCap    models.MarketCap
-		coins        models.Coins
+		coins        models.ListingsLatestResponse
 	)
 
 	ctx, c := context.WithTimeout(ctx, timeoutWork)
 	defer c()
 
-	srv := coinstats.NewService(baseURL, apiKey)
+	srvCoinstats := coinstats.NewService(coinstatsApiKey)
+	srvCoinmarketcap := coinmarketcap.NewService(coinmarketcapApiKey)
 
 	sem := make(chan struct{}, limitWorkers)
 	newsCh := make(chan models.News)
 	errorsCh := make(chan error, limitWorkers)
 	fearAndGreedCh := make(chan models.FearAndGreed)
 	marketCapCh := make(chan models.MarketCap)
-	coinsCh := make(chan models.Coins)
+	coinsCh := make(chan models.ListingsLatestResponse)
 	mapNews := make(map[string]models.News)
 
 	jobs := []func(){
@@ -80,7 +90,7 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 			}()
 			defer wg.Done()
 
-			gotLatestNews, err := srv.GetNewsByType(ctx, models.NewsTypeLatest, limitNews)
+			gotLatestNews, err := srvCoinstats.GetNewsByType(ctx, models.NewsTypeLatest, limitNews)
 			if err != nil {
 				errorsCh <- fmt.Errorf("error fetching latest news: %w", err)
 				return
@@ -95,7 +105,7 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 			}()
 			defer wg.Done()
 
-			gotTrendingNews, err := srv.GetNewsByType(ctx, models.NewsTypeTrending, limitNews)
+			gotTrendingNews, err := srvCoinstats.GetNewsByType(ctx, models.NewsTypeTrending, limitNews)
 			if err != nil {
 				errorsCh <- fmt.Errorf("error fetching trending news: %w", err)
 				return
@@ -110,7 +120,7 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 			}()
 			defer wg.Done()
 
-			gotFearAndGreed, err := srv.GetFearAndGreed(ctx)
+			gotFearAndGreed, err := srvCoinstats.GetFearAndGreed(ctx)
 			if err != nil {
 				errorsCh <- fmt.Errorf("error getting fear and greed: %w", err)
 				return
@@ -124,7 +134,7 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 			}()
 			defer wg.Done()
 
-			gotMarketCap, err := srv.GetMarketCap(ctx)
+			gotMarketCap, err := srvCoinstats.GetMarketCap(ctx)
 			if err != nil {
 				errorsCh <- fmt.Errorf("error getting market cap: %w", err)
 				return
@@ -138,9 +148,9 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 			}()
 			defer wg.Done()
 
-			gotCoins, err := srv.GetCoins(ctx, limitCoins)
+			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, limitCoins)
 			if err != nil {
-				errorsCh <- fmt.Errorf("error getting coins: %w", err)
+				errorsCh <- fmt.Errorf("error listings latests: %w", err)
 				return
 			}
 
@@ -237,10 +247,10 @@ func getData(ctx context.Context, apiKey string) (data, error) {
 	}
 
 	return data{
-		news:         newsResult,
-		fearAndGreed: fearAndGreed,
-		marketCap:    marketCap,
-		coins:        coins,
+		news:           newsResult,
+		fearAndGreed:   fearAndGreed,
+		marketCap:      marketCap,
+		listingsLatest: coins,
 	}, nil
 }
 
@@ -305,16 +315,18 @@ func showMarketCap(gotMarketCap models.MarketCap) {
 	fmt.Println()
 }
 
-func showCoins(gotCoins models.Coins) {
+func showCoins(gotCoins models.ListingsLatestResponse) {
 	fmt.Println("<COINS>")
-	for _, c := range gotCoins.Result {
+	for _, c := range gotCoins.Data {
 		fmt.Printf("Name: %s\n", c.Name)
 		fmt.Printf("Symbol: %s\n", c.Symbol)
-		fmt.Printf("Price: %f$\n", c.Price)
-		fmt.Printf("Volume: %f$\n", c.Volume)
-		fmt.Printf("Market Cap: %f$\n", c.MarketCap)
-		fmt.Printf("Price changed 24 hours: %f%%\n", c.PriceChange1D)
-		fmt.Printf("Price changed 7 days: %f%%\n", c.PriceChange1W)
+		fmt.Printf("Price: %f$\n", c.Quote.Usd.Price)
+		fmt.Printf("Volume: %f$\n", c.Quote.Usd.Volume24h)
+		fmt.Printf("Market Cap: %f$\n", c.Quote.Usd.MarketCap)
+		fmt.Printf("Price changed 1 hour: %f%%\n", c.Quote.Usd.PercentChange1h)
+		fmt.Printf("Price changed 24 hours: %f%%\n", c.Quote.Usd.PercentChange24h)
+		fmt.Printf("Price changed 7 days: %f%%\n", c.Quote.Usd.PercentChange7d)
+		fmt.Printf("Price changed 90 days: %f%%\n", c.Quote.Usd.PercentChange90d)
 	}
 	fmt.Println("</COINS>")
 	fmt.Println()

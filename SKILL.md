@@ -51,6 +51,7 @@ crypto-analyzer
 You must have a Coinstats API Key set in your environment:
 ```bash
 export COINSTATS_API_KEY=<YOUR_API_KEY>
+export API_KEY_COINMARKETCAP=<YOUR_API_KEY>
 ```
 
 ## Output Data Points
@@ -73,4 +74,4 @@ A list of the latest headlines including:
   - Affected Coins: Identifies which specific tokens are relevant to the news item.
   
 ## Troubleshooting
-If the command fails, ensure the binary is in your path (usually /usr/local/bin/) and the COINSTATS_API_KEY is valid and exported in the current shell session.
+If the command fails, ensure the binary is in your path (usually /usr/local/bin/) and the COINSTATS_API_KEY,API_KEY_COINMARKETCAP are valid and exported in the current shell session.

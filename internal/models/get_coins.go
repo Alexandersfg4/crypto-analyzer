@@ -10,9 +10,9 @@ type Coins struct {
 		PageCount       int  `json:"pageCount,omitzero"`
 	} `json:"meta"`
 	Result []struct {
-		AvailableSupply   int    `json:"availableSupply,omitzero"`
-		Color             string `json:"color,omitempty,omitzero"`
-		ContractAddress   string `json:"contractAddress,omitempty,omitzero"`
+		AvailableSupply   float64 `json:"availableSupply,omitzero"`
+		Color             string  `json:"color,omitempty,omitzero"`
+		ContractAddress   string  `json:"contractAddress,omitempty,omitzero"`
 		ContractAddresses []struct {
 			Blockchain      string `json:"blockchain,omitzero"`
 			ContractAddress string `json:"contractAddress,omitzero"`
@@ -34,7 +34,7 @@ type Coins struct {
 		RedditURL             string   `json:"redditUrl,omitempty,omitzero"`
 		Slug                  string   `json:"slug,omitzero"`
 		Symbol                string   `json:"symbol,omitzero"`
-		TotalSupply           int      `json:"totalSupply,omitzero"`
+		TotalSupply           float64  `json:"totalSupply,omitzero"`
 		TwitterURL            string   `json:"twitterUrl,omitempty,omitzero"`
 		Volume                float64  `json:"volume"`
 		WebsiteURL            string   `json:"websiteUrl,omitempty,omitzero"`
