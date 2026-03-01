@@ -8,7 +8,7 @@ import (
 
 const (
 	apiHeader = "X-CMC_PRO_API_KEY"
-	baseURL   = "https://pro-api.coinmarketcap.co"
+	baseURL   = "https://pro-api.coinmarketcap.com"
 )
 
 func NewService(apiKey string) *Service {

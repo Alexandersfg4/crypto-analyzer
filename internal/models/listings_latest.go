@@ -22,7 +22,7 @@ type ListingsLatestData struct {
 	ID                int       `json:"id,omitzero"`
 	InfiniteSupply    bool      `json:"infinite_supply"`
 	LastUpdated       time.Time `json:"last_updated,omitzero"`
-	MaxSupply         *int      `json:"max_supply"`
+	MaxSupply         float64   `json:"max_supply"`
 	MintedMarketCap   float64   `json:"minted_market_cap,omitzero"`
 	Name              string    `json:"name,omitzero"`
 	NumMarketPairs    int       `json:"num_market_pairs,omitzero"`
