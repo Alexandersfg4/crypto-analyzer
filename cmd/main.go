@@ -5,11 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/coinmarketcap"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/coinstats"
+	"github.com/Alexandersfg4/crypto-analyzer/internal/defillama"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
@@ -17,14 +19,16 @@ const (
 	envCoinstatsAPIKey     = "COINSTATS_API_KEY"
 	envCoinmarketcapAPIKey = "API_KEY_COINMARKETCAP"
 	limitNews              = 20
-	limitWorkers           = 5
+	limitWorkers           = 6
 	limitCoins             = 500
 	timeoutWork            = time.Second * 10
 )
 
-var tokens = flag.String("tokens", "", "comma-separated list of tokens")
+var protocols = flag.String("protocols", "", "comma-separated list of protocols")
 
 func main() {
+	flag.Parse()
+
 	apiKeyCoinstats, ok := os.LookupEnv(envCoinstatsAPIKey)
 	if !ok {
 		fmt.Println("env COINSTATS_API_KEY not found")
@@ -51,6 +55,7 @@ func main() {
 	showFearAndGreed(gotData.fearAndGreed)
 	showCoins(gotData.listingsLatest)
 	showNews(gotData.news)
+	showProtocols(gotData.protocols)
 }
 
 type data struct {
@@ -58,15 +63,17 @@ type data struct {
 	fearAndGreed   models.FearAndGreed
 	marketCap      models.MarketCap
 	listingsLatest models.ListingsLatestResponse
+	protocols      models.GetProtocolsResponse
 }
 
 func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (data, error) {
 	var (
-		result       data
-		wg           sync.WaitGroup
-		fearAndGreed models.FearAndGreed
-		marketCap    models.MarketCap
-		coins        models.ListingsLatestResponse
+		result          data
+		wg              sync.WaitGroup
+		fearAndGreed    models.FearAndGreed
+		marketCap       models.MarketCap
+		coins           models.ListingsLatestResponse
+		protocolsResult models.GetProtocolsResponse
 	)
 
 	ctx, c := context.WithTimeout(ctx, timeoutWork)
@@ -74,6 +81,7 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (
 
 	srvCoinstats := coinstats.NewService(coinstatsApiKey)
 	srvCoinmarketcap := coinmarketcap.NewService(coinmarketcapApiKey)
+	srvDefillama := defillama.NewService()
 
 	sem := make(chan struct{}, limitWorkers)
 	newsCh := make(chan models.News)
@@ -81,6 +89,7 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (
 	fearAndGreedCh := make(chan models.FearAndGreed)
 	marketCapCh := make(chan models.MarketCap)
 	coinsCh := make(chan models.ListingsLatestResponse)
+	protocolsCh := make(chan models.GetProtocolsResponse)
 	mapNews := make(map[string]models.News)
 
 	jobs := []func(){
@@ -158,6 +167,23 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (
 		},
 	}
 
+	if *protocols != "" {
+		jobs = append(jobs, func() {
+			defer func() {
+				<-sem
+			}()
+			defer wg.Done()
+
+			gotProtocols, err := srvDefillama.GetProtocols(ctx)
+			if err != nil {
+				errorsCh <- fmt.Errorf("error getting protocols: %w", err)
+				return
+			}
+
+			protocolsCh <- gotProtocols
+		})
+	}
+
 	go func() {
 		for {
 			select {
@@ -218,6 +244,21 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (
 		}
 	}()
 
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case r, ok := <-protocolsCh:
+				if !ok {
+					return
+				}
+
+				protocolsResult = r
+			}
+		}
+	}()
+
 	for _, j := range jobs {
 		wg.Add(1)
 
@@ -233,6 +274,7 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (
 	close(marketCapCh)
 	close(coinsCh)
 	close(errorsCh)
+	close(protocolsCh)
 
 	for e := range errorsCh {
 		if e != nil {
@@ -251,6 +293,7 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (
 		fearAndGreed:   fearAndGreed,
 		marketCap:      marketCap,
 		listingsLatest: coins,
+		protocols:      protocolsResult,
 	}, nil
 }
 
@@ -329,5 +372,34 @@ func showCoins(gotCoins models.ListingsLatestResponse) {
 		fmt.Printf("Price changed 90 days: %f%%\n", c.Quote.Usd.PercentChange90d)
 	}
 	fmt.Println("</COINS>")
+	fmt.Println()
+}
+
+func showProtocols(gotProtocols models.GetProtocolsResponse) {
+	fmt.Println("<PROTOCOLS>")
+	lfp := strings.Split(*protocols, ",")
+	lowerLfp := make([]string, len(lfp))
+	for i, l := range lfp {
+		lowerLfp[i] = strings.ToLower(l)
+	}
+
+	fmt.Println("GOT AMOUNT ", len(gotProtocols))
+	for _, p := range gotProtocols {
+		for _, l := range lowerLfp {
+			if strings.Contains(strings.ToLower(p.Name), l) {
+				fmt.Printf("Name: %s\n", p.Name)
+				fmt.Printf("Symbol: %s\n", p.Symbol)
+				fmt.Printf("Description: %f$\n", p.Description)
+				fmt.Printf("Category: %f$\n", p.Category)
+				fmt.Printf("TVL: %f$\n", p.Tvl)
+				fmt.Printf("Price changed 1 hour: %f%%\n", p.Change1h)
+				fmt.Printf("Price changed 24 hours: %f%%\n", p.Change1d)
+				fmt.Printf("Price changed 7 days: %f%%\n", p.Change7d)
+			} else {
+				fmt.Println("NOT FOUND ", strings.ToLower(p.Name), " AND ", l)
+			}
+		}
+	}
+	fmt.Println("</PROTOCOLS>")
 	fmt.Println()
 }
