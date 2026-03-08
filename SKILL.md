@@ -1,13 +1,29 @@
 ---
 name: crypto-analyzer
-description: Fetch real-time cryptocurrency market data, including global capitalization, Fear and Greed Index, top coin prices, and latest industry news.
-homepage: https://github.com/example/crypto-analyzer
-metadata: {"nanobot":{"emoji":"📈","requires":{"bins":["crypto-analyzer"]},"install":[{"id":"build","kind":"shell","command":"make build && make install","label":"Build and install crypto-analyzer"}]}}
+description: Fetches real-time cryptocurrency market data (market cap, Fear and Greed Index, top coin prices, and latest industry news). Use when users ask for a market overview, crypto sentiment, BTC/ETH prices, or recent crypto news.
+compatibility: Requires internet access, the `crypto-analyzer` binary on PATH, and COINSTATS_API_KEY plus API_KEY_COINMARKETCAP environment variables.
+metadata:
+  homepage: https://github.com/Alexandersfg4/crypto-analyzer
+  nanobot:
+    emoji: "📈"
+    requires:
+      bins:
+        - go
+        - crypto-analyzer
+    install:
+      - id: download
+        kind: shell
+        command: git clone git@github.com:Alexandersfg4/crypto-analyzer.git && cd crypto-analyzer
+        label: Download repository and go to the directory
+      - id: build
+        kind: shell
+        command: make build && make install
+        label: Build and install crypto-analyzer
 ---
 
 # Crypto Analyzer
 
-A Go-based CLI tool that aggregates data from the Coinstats API to provide a comprehensive snapshot of the cryptocurrency market.
+A Go-based CLI tool that aggregates Coinstats and CoinMarketCap data to provide a comprehensive snapshot of the cryptocurrency market in four tagged sections.
 
 ## When to use (trigger phrases)
 
@@ -21,23 +37,33 @@ Use this skill when the user asks for:
 
 ## Quick start
 
-The tool provides a combined report of market stats, sentiment, prices, and news in one go:
+Use this workflow to produce a single combined report of market stats, sentiment, prices, and news:
+1. Ensure the `crypto-analyzer` binary is installed and available on your PATH.
+2. Export `COINSTATS_API_KEY` and `API_KEY_COINMARKETCAP` in the current shell session.
+3. Run `crypto-analyzer` and summarize the four output sections for the user.
 
-```bash
-crypto-analyzer
+Arguments:
+- `--protocols` — comma-separated protocol names to filter (e.g., Aave, Drift, Kamino).
+- `--tokens` — comma-separated token symbols to filter (e.g., BTC, ETH, SOL).
+
+Example:
+```sh
+export COINSTATS_API_KEY=... API_KEY_COINMARKETCAP=...
+crypto-analyzer --protocols=AAVE,Drift,Kamino --tokens=BTC,ETH,SUI
 ```
 
 ## Requirements & Setup
-You must have a Coinstats API Key set in your environment:
-```bash
-export COINSTATS_API_KEY=<YOUR_API_KEY>
-```
+- Coinstats API key exported as `COINSTATS_API_KEY`.
+- CoinMarketCap API key exported as `API_KEY_COINMARKETCAP`.
+- Network access to the required APIs.
+- Binary available on PATH (often `/usr/local/bin/` after install).
 
-## Output Data Points
-The command returns four distinct sections wrapped in XML-like tags for easy parsing:
+## Output data points
+The command returns four distinct sections wrapped in XML-like tags for easy parsing. If any section is missing, report what you do have and note the missing portion.
+
 1. Market Capitalization
 Includes total market cap, 24h trading volume, and Bitcoin dominance percentage.
-  - **Key Metric**: Look at "24-hour change" to determine if the market is trending up or down.
+  - **Key metric**: Use the 24-hour change to describe the market trend (up/down/flat). If not present, say it is unavailable.
 2. Fear and Greed Index
 Provides market sentiment (0-100).
   - **Classifications**: Extreme Fear, Fear, Neutral, Greed, Extreme Greed.
@@ -51,6 +77,9 @@ A list of the latest headlines including:
   - Title & Description: Summary of the event.
   - Source & Link: Original URL for deep diving.
   - Affected Coins: Identifies which specific tokens are relevant to the news item.
-  
+5. Protocols data:
+  - TVL  
+  - Price changes
+
 ## Troubleshooting
-If the command fails, ensure the binary is in your path (usually /usr/local/bin/) and the COINSTATS_API_KEY is valid and exported in the current shell session.
+If the command fails, ensure the binary is on your PATH (often `/usr/local/bin/`), network access is available, and `COINSTATS_API_KEY` and `API_KEY_COINMARKETCAP` are valid and exported in the current shell session.

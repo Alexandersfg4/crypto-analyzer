@@ -1,4 +1,4 @@
-package coinstats
+package defillama
 
 import (
 	"fmt"
@@ -7,16 +7,14 @@ import (
 )
 
 const (
-	apiHeader = "X-API-KEY"
-	baseURL   = "https://openapiv1.coinstats.app"
+	baseURL = "https://api.llama.fi"
 )
 
-func NewService(apiKey string) *Service {
+func NewService() *Service {
 	return &Service{
 		httpClient: &http.Client{
 			Transport: &rt{
 				baseURL: baseURL,
-				apiKey:  apiKey,
 			},
 		},
 	}
@@ -28,7 +26,6 @@ type Service struct {
 
 type rt struct {
 	baseURL string
-	apiKey  string
 }
 
 func (rt *rt) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -41,6 +38,5 @@ func (rt *rt) RoundTrip(req *http.Request) (*http.Response, error) {
 	gotURL := baseURL.ResolveReference(req.URL)
 
 	req.URL = gotURL
-	req.Header.Set(apiHeader, rt.apiKey)
 	return http.DefaultTransport.RoundTrip(req)
 }
