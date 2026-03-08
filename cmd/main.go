@@ -19,7 +19,6 @@ const (
 	envCoinstatsAPIKey     = "COINSTATS_API_KEY"
 	envCoinmarketcapAPIKey = "API_KEY_COINMARKETCAP"
 	limitNews              = 20
-	limitWorkers           = 6
 	limitCoins             = 100
 	timeoutWork            = time.Second * 10
 )
@@ -44,11 +43,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	flag.Parse()
-
 	ctx := context.Background()
 
-	gotData, err := getData(ctx, apiKeyCoinstats, apiKeyCoinmarketcap)
+	opts := requestOptions{
+		tokens:    parseCSV(*tokens),
+		protocols: parseCSV(*protocols),
+	}
+
+	gotData, err := getData(ctx, apiKeyCoinstats, apiKeyCoinmarketcap, opts)
 	if err != nil {
 		fmt.Println("getting data: ", err.Error())
 		os.Exit(1)
@@ -56,9 +58,9 @@ func main() {
 
 	showMarketCap(gotData.marketCap)
 	showFearAndGreed(gotData.fearAndGreed)
-	showCoins(gotData.listingsLatest)
+	showCoins(gotData.listingsLatest, opts.tokens)
 	showNews(gotData.news)
-	showProtocols(gotData.protocols)
+	showProtocols(gotData.protocols, opts.protocols)
 }
 
 type data struct {
@@ -69,238 +71,148 @@ type data struct {
 	protocols      models.GetProtocolsResponse
 }
 
-func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (data, error) {
+type requestOptions struct {
+	tokens    []string
+	protocols []string
+}
+
+func (o requestOptions) hasTokens() bool {
+	return len(o.tokens) > 0
+}
+
+func (o requestOptions) hasProtocols() bool {
+	return len(o.protocols) > 0
+}
+
+func parseCSV(value string) []string {
+	if value == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		result = append(result, p)
+	}
+	return result
+}
+
+func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string, opts requestOptions) (data, error) {
 	var (
-		result          data
-		wg              sync.WaitGroup
-		fearAndGreed    models.FearAndGreed
-		marketCap       models.MarketCap
-		coins           models.ListingsLatestResponse
-		protocolsResult models.GetProtocolsResponse
+		result  data
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		newsMap = make(map[string]models.News)
+		errCh   = make(chan error, 8)
 	)
 
-	ctx, c := context.WithTimeout(ctx, timeoutWork)
-	defer c()
+	ctx, cancel := context.WithTimeout(ctx, timeoutWork)
+	defer cancel()
 
 	srvCoinstats := coinstats.NewService(coinstatsApiKey)
 	srvCoinmarketcap := coinmarketcap.NewService(coinmarketcapApiKey)
 	srvDefillama := defillama.NewService()
 
-	sem := make(chan struct{}, limitWorkers)
-	newsCh := make(chan models.News)
-	errorsCh := make(chan error, limitWorkers)
-	fearAndGreedCh := make(chan models.FearAndGreed)
-	marketCapCh := make(chan models.MarketCap)
-	coinsCh := make(chan models.ListingsLatestResponse)
-	protocolsCh := make(chan models.GetProtocolsResponse)
-	mapNews := make(map[string]models.News)
-
 	jobs := []func(){
 		func() {
-			defer func() {
-				<-sem
-			}()
-			defer wg.Done()
-
 			gotLatestNews, err := srvCoinstats.GetNewsByType(ctx, models.NewsTypeLatest, limitNews)
 			if err != nil {
-				errorsCh <- fmt.Errorf("error fetching latest news: %w", err)
+				errCh <- fmt.Errorf("error fetching latest news: %w", err)
 				return
 			}
+			mu.Lock()
 			for _, n := range gotLatestNews {
-				newsCh <- n
+				newsMap[n.Title] = n
 			}
+			mu.Unlock()
 		},
 		func() {
-			defer func() {
-				<-sem
-			}()
-			defer wg.Done()
-
 			gotTrendingNews, err := srvCoinstats.GetNewsByType(ctx, models.NewsTypeTrending, limitNews)
 			if err != nil {
-				errorsCh <- fmt.Errorf("error fetching trending news: %w", err)
+				errCh <- fmt.Errorf("error fetching trending news: %w", err)
 				return
 			}
+			mu.Lock()
 			for _, n := range gotTrendingNews {
-				newsCh <- n
+				newsMap[n.Title] = n
 			}
+			mu.Unlock()
 		},
 		func() {
-			defer func() {
-				<-sem
-			}()
-			defer wg.Done()
-
 			gotFearAndGreed, err := srvCoinstats.GetFearAndGreed(ctx)
 			if err != nil {
-				errorsCh <- fmt.Errorf("error getting fear and greed: %w", err)
+				errCh <- fmt.Errorf("error getting fear and greed: %w", err)
 				return
 			}
-
-			fearAndGreedCh <- gotFearAndGreed
+			mu.Lock()
+			result.fearAndGreed = gotFearAndGreed
+			mu.Unlock()
 		},
 		func() {
-			defer func() {
-				<-sem
-			}()
-			defer wg.Done()
-
 			gotMarketCap, err := srvCoinstats.GetMarketCap(ctx)
 			if err != nil {
-				errorsCh <- fmt.Errorf("error getting market cap: %w", err)
+				errCh <- fmt.Errorf("error getting market cap: %w", err)
 				return
 			}
-
-			marketCapCh <- gotMarketCap
+			mu.Lock()
+			result.marketCap = gotMarketCap
+			mu.Unlock()
 		},
 	}
 
-	if *protocols != "" {
+	if opts.hasProtocols() {
 		jobs = append(jobs, func() {
-			defer func() {
-				<-sem
-			}()
-			defer wg.Done()
-
 			gotProtocols, err := srvDefillama.GetProtocols(ctx)
 			if err != nil {
-				errorsCh <- fmt.Errorf("error getting protocols: %w", err)
+				errCh <- fmt.Errorf("error getting protocols: %w", err)
 				return
 			}
-
-			protocolsCh <- gotProtocols
+			mu.Lock()
+			result.protocols = gotProtocols
+			mu.Unlock()
 		})
 	}
 
-	if *tokens != "" {
+	if opts.hasTokens() {
 		jobs = append(jobs, func() {
-			defer func() {
-				<-sem
-			}()
-			defer wg.Done()
-
 			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, limitCoins)
 			if err != nil {
-				errorsCh <- fmt.Errorf("error listings latests: %w", err)
+				errCh <- fmt.Errorf("error listings latests: %w", err)
 				return
 			}
-
-			coinsCh <- gotCoins
+			mu.Lock()
+			result.listingsLatest = gotCoins
+			mu.Unlock()
 		})
 	}
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case news, ok := <-newsCh:
-				if !ok {
-					return
-				}
-
-				mapNews[news.Title] = news
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case f, ok := <-fearAndGreedCh:
-				if !ok {
-					return
-				}
-
-				fearAndGreed = f
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case m, ok := <-marketCapCh:
-				if !ok {
-					return
-				}
-
-				marketCap = m
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case c, ok := <-coinsCh:
-				if !ok {
-					return
-				}
-
-				coins = c
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case r, ok := <-protocolsCh:
-				if !ok {
-					return
-				}
-
-				protocolsResult = r
-			}
-		}
-	}()
 
 	for _, j := range jobs {
 		wg.Add(1)
-
-		sem <- struct{}{}
-
-		go j()
+		go func(job func()) {
+			defer wg.Done()
+			job()
+		}(j)
 	}
 
 	wg.Wait()
+	close(errCh)
 
-	close(newsCh)
-	close(fearAndGreedCh)
-	close(marketCapCh)
-	close(coinsCh)
-	close(errorsCh)
-	close(protocolsCh)
-
-	for e := range errorsCh {
+	for e := range errCh {
 		if e != nil {
 			return result, e
 		}
 	}
 
-	newsResult := make([]models.News, 0, len(mapNews))
-
-	for _, v := range mapNews {
+	newsResult := make([]models.News, 0, len(newsMap))
+	for _, v := range newsMap {
 		newsResult = append(newsResult, v)
 	}
+	result.news = newsResult
 
-	return data{
-		news:           newsResult,
-		fearAndGreed:   fearAndGreed,
-		marketCap:      marketCap,
-		listingsLatest: coins,
-		protocols:      protocolsResult,
-	}, nil
+	return result, nil
 }
 
 func showNews(gotNews models.GetNewsResponse) {
@@ -364,16 +276,21 @@ func showMarketCap(gotMarketCap models.MarketCap) {
 	fmt.Println()
 }
 
-func showCoins(gotCoins models.ListingsLatestResponse) {
-	lft := strings.Split(*tokens, ",")
-	upperLftmap := make(map[string]bool, len(lft))
-	for _, l := range lft {
-		upperLftmap[strings.ToUpper(l)] = true
+func showCoins(gotCoins models.ListingsLatestResponse, tokens []string) {
+	fmt.Println("<TOKENS>")
+	if len(tokens) == 0 {
+		fmt.Println("</TOKENS>")
+		fmt.Println()
+		return
 	}
 
-	fmt.Println("<TOKENS>")
+	tokenSet := make(map[string]struct{}, len(tokens))
+	for _, t := range tokens {
+		tokenSet[strings.ToUpper(t)] = struct{}{}
+	}
+
 	for _, c := range gotCoins.Data {
-		if !upperLftmap[c.Symbol] {
+		if _, ok := tokenSet[c.Symbol]; !ok {
 			continue
 		}
 
@@ -397,16 +314,25 @@ func showCoins(gotCoins models.ListingsLatestResponse) {
 	fmt.Println()
 }
 
-func showProtocols(gotProtocols models.GetProtocolsResponse) {
+func showProtocols(gotProtocols models.GetProtocolsResponse, protocols []string) {
 	fmt.Println("<PROTOCOLS>")
-	lfp := strings.Split(*protocols, ",")
-	lowerLfp := make([]string, len(lfp))
-	for i, l := range lfp {
-		lowerLfp[i] = strings.ToLower(l)
+	if len(protocols) == 0 {
+		fmt.Println("</PROTOCOLS>")
+		fmt.Println()
+		return
+	}
+
+	lowerFilters := make([]string, 0, len(protocols))
+	for _, p := range protocols {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		lowerFilters = append(lowerFilters, strings.ToLower(p))
 	}
 
 	for _, p := range gotProtocols {
-		for _, l := range lowerLfp {
+		for _, l := range lowerFilters {
 			if strings.Contains(strings.ToLower(p.Name), l) && p.Tvl > 0 {
 				fmt.Printf("Name: %s\n", p.Name)
 				fmt.Printf("Symbol: %s\n", p.Symbol)

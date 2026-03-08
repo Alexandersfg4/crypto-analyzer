@@ -1,8 +1,8 @@
 ## Crypto Analyzer
-Fetch real-time cryptocurrency market data, including global capitalization, Fear and Greed Index, passed in token prices, and latest industry news absolutely **FREE**.
+Fetch real-time cryptocurrency market data, including global capitalization, Fear and Greed Index, token prices you request, and the latest industry news — absolutely **FREE**.
 
 1. Get API key from [coinstats](https://openapi.coinstats.app/) and [coinmarketcap](https://pro.coinmarketcap.com/account)
-2. Set the API key in the environment variable
+2. Set the API keys in your environment
 ```sh
 export COINSTATS_API_KEY=<YOUR_API_KEY>
 export API_KEY_COINMARKETCAP=<YOUR_API_KEY>
@@ -13,14 +13,14 @@ export API_KEY_COINMARKETCAP=<YOUR_API_KEY>
 make build
 ```
 
-4. Install the binary (placed it in /usr/local/bin/)
+4. Install the binary (installs to `/usr/local/bin/`)
 ```sh
 make install
 ```
 
 5. Get crypto data
 ```sh
-crypto-analyzer --protocols=AAVE,DRIFT --tokens=BTC,ETH,SUI # specify protocols and tokens to fetch
+crypto-analyzer --protocols=AAVE,DRIFT --tokens=BTC,ETH,SUI
 ```
 
 Result example:

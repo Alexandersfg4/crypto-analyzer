@@ -39,18 +39,22 @@ Use this skill when the user asks for:
 
 Use this workflow to produce a single combined report of market stats, sentiment, prices, and news:
 1. Ensure the `crypto-analyzer` binary is installed and available on your PATH.
-2. Set environment variables `COINSTATS_API_KEY` and `API_KEY_COINMARKETCAP` in the current shell session.
+2. Export `COINSTATS_API_KEY` and `API_KEY_COINMARKETCAP` in the current shell session.
 3. Run `crypto-analyzer` and summarize the four output sections for the user.
-- protocols - desired DEX protocols to analyze
-- tokens - desired tokens to analyze
+
+Arguments:
+- `--protocols` — comma-separated protocol names to filter (e.g., Aave, Drift, Kamino).
+- `--tokens` — comma-separated token symbols to filter (e.g., BTC, ETH, SOL).
+
 Example:
 ```sh
-crypto-analyzer --protocols=AAVE,Drift,Kamino --tokens=BTC,ETH,SUI,SOL,USDC,USDT,DAI,LINK,TON,HYPE,TAO`
+export COINSTATS_API_KEY=... API_KEY_COINMARKETCAP=...
+crypto-analyzer --protocols=AAVE,Drift,Kamino --tokens=BTC,ETH,SUI
 ```
 
 ## Requirements & Setup
-- Coinstats API key in `COINSTATS_API_KEY`.
-- CoinMarketCap API key in `API_KEY_COINMARKETCAP`.
+- Coinstats API key exported as `COINSTATS_API_KEY`.
+- CoinMarketCap API key exported as `API_KEY_COINMARKETCAP`.
 - Network access to the required APIs.
 - Binary available on PATH (often `/usr/local/bin/` after install).
 
