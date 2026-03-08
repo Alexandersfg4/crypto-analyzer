@@ -15,7 +15,7 @@ func (s *Service) GetListingsLatest(ctx context.Context, limit int) (models.List
 	var listingsLatest models.ListingsLatestResponse
 
 	u := url.URL{
-		Path: "v1/cryptocurrency/listings/latest",
+		Path: "/v3/cryptocurrency/listings/latest",
 		RawQuery: url.Values{
 			"limit": {strconv.Itoa(limit)},
 		}.Encode(),

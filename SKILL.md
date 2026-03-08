@@ -8,6 +8,7 @@ metadata:
     emoji: "📈"
     requires:
       bins:
+        - go
         - crypto-analyzer
     install:
       - id: download
@@ -40,6 +41,12 @@ Use this workflow to produce a single combined report of market stats, sentiment
 1. Ensure the `crypto-analyzer` binary is installed and available on your PATH.
 2. Set environment variables `COINSTATS_API_KEY` and `API_KEY_COINMARKETCAP` in the current shell session.
 3. Run `crypto-analyzer` and summarize the four output sections for the user.
+- protocols - desired DEX protocols to analyze
+- tokens - desired tokens to analyze
+Example:
+```sh
+crypto-analyzer --protocols=AAVE,Drift,Kamino --tokens=BTC,ETH,SUI,SOL,USDC,USDT,DAI,LINK,TON,HYPE,TAO`
+```
 
 ## Requirements & Setup
 - Coinstats API key in `COINSTATS_API_KEY`.
@@ -66,6 +73,9 @@ A list of the latest headlines including:
   - Title & Description: Summary of the event.
   - Source & Link: Original URL for deep diving.
   - Affected Coins: Identifies which specific tokens are relevant to the news item.
+5. Protocols data:
+  - TVL  
+  - Price changes
 
 ## Troubleshooting
 If the command fails, ensure the binary is on your PATH (often `/usr/local/bin/`), network access is available, and `COINSTATS_API_KEY` and `API_KEY_COINMARKETCAP` are valid and exported in the current shell session.

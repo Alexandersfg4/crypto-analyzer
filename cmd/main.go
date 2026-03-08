@@ -20,11 +20,14 @@ const (
 	envCoinmarketcapAPIKey = "API_KEY_COINMARKETCAP"
 	limitNews              = 20
 	limitWorkers           = 6
-	limitCoins             = 500
+	limitCoins             = 100
 	timeoutWork            = time.Second * 10
 )
 
-var protocols = flag.String("protocols", "", "comma-separated list of protocols")
+var (
+	protocols = flag.String("protocols", "", "comma-separated list of protocols")
+	tokens    = flag.String("tokens", "", "comma-separated list of tokens")
+)
 
 func main() {
 	flag.Parse()
@@ -151,20 +154,6 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (
 
 			marketCapCh <- gotMarketCap
 		},
-		func() {
-			defer func() {
-				<-sem
-			}()
-			defer wg.Done()
-
-			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, limitCoins)
-			if err != nil {
-				errorsCh <- fmt.Errorf("error listings latests: %w", err)
-				return
-			}
-
-			coinsCh <- gotCoins
-		},
 	}
 
 	if *protocols != "" {
@@ -181,6 +170,23 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string) (
 			}
 
 			protocolsCh <- gotProtocols
+		})
+	}
+
+	if *tokens != "" {
+		jobs = append(jobs, func() {
+			defer func() {
+				<-sem
+			}()
+			defer wg.Done()
+
+			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, limitCoins)
+			if err != nil {
+				errorsCh <- fmt.Errorf("error listings latests: %w", err)
+				return
+			}
+
+			coinsCh <- gotCoins
 		})
 	}
 
@@ -359,19 +365,35 @@ func showMarketCap(gotMarketCap models.MarketCap) {
 }
 
 func showCoins(gotCoins models.ListingsLatestResponse) {
-	fmt.Println("<COINS>")
+	lft := strings.Split(*tokens, ",")
+	upperLftmap := make(map[string]bool, len(lft))
+	for _, l := range lft {
+		upperLftmap[strings.ToUpper(l)] = true
+	}
+
+	fmt.Println("<TOKENS>")
 	for _, c := range gotCoins.Data {
+		if !upperLftmap[c.Symbol] {
+			continue
+		}
+
 		fmt.Printf("Name: %s\n", c.Name)
 		fmt.Printf("Symbol: %s\n", c.Symbol)
-		fmt.Printf("Price: %f$\n", c.Quote.Usd.Price)
-		fmt.Printf("Volume: %f$\n", c.Quote.Usd.Volume24h)
-		fmt.Printf("Market Cap: %f$\n", c.Quote.Usd.MarketCap)
-		fmt.Printf("Price changed 1 hour: %f%%\n", c.Quote.Usd.PercentChange1h)
-		fmt.Printf("Price changed 24 hours: %f%%\n", c.Quote.Usd.PercentChange24h)
-		fmt.Printf("Price changed 7 days: %f%%\n", c.Quote.Usd.PercentChange7d)
-		fmt.Printf("Price changed 90 days: %f%%\n", c.Quote.Usd.PercentChange90d)
+		fmt.Println("<Quotes>")
+		for _, q := range c.Quote {
+			fmt.Printf("<%s>\n", q.Symbol)
+			fmt.Printf("Price: %f\n", q.Price)
+			fmt.Printf("Volume for 24h: %f\n", q.Volume24h)
+			fmt.Printf("Market Cap: %f\n", q.MarketCap)
+			fmt.Printf("Price changed 1 hour: %f%%\n", q.PercentChange1h)
+			fmt.Printf("Price changed 24 hours: %f%%\n", q.PercentChange24h)
+			fmt.Printf("Price changed 7 days: %f%%\n", q.PercentChange7d)
+			fmt.Printf("Price changed 90 days: %f%%\n", q.PercentChange90d)
+			fmt.Printf("</%s>\n", q.Symbol)
+		}
+		fmt.Println("</Quotes>")
 	}
-	fmt.Println("</COINS>")
+	fmt.Println("</TOKENS>")
 	fmt.Println()
 }
 
@@ -383,20 +405,17 @@ func showProtocols(gotProtocols models.GetProtocolsResponse) {
 		lowerLfp[i] = strings.ToLower(l)
 	}
 
-	fmt.Println("GOT AMOUNT ", len(gotProtocols))
 	for _, p := range gotProtocols {
 		for _, l := range lowerLfp {
-			if strings.Contains(strings.ToLower(p.Name), l) {
+			if strings.Contains(strings.ToLower(p.Name), l) && p.Tvl > 0 {
 				fmt.Printf("Name: %s\n", p.Name)
 				fmt.Printf("Symbol: %s\n", p.Symbol)
-				fmt.Printf("Description: %f$\n", p.Description)
-				fmt.Printf("Category: %f$\n", p.Category)
+				fmt.Printf("Description: %s\n", p.Description)
+				fmt.Printf("Category: %s\n", p.Category)
 				fmt.Printf("TVL: %f$\n", p.Tvl)
 				fmt.Printf("Price changed 1 hour: %f%%\n", p.Change1h)
 				fmt.Printf("Price changed 24 hours: %f%%\n", p.Change1d)
 				fmt.Printf("Price changed 7 days: %f%%\n", p.Change7d)
-			} else {
-				fmt.Println("NOT FOUND ", strings.ToLower(p.Name), " AND ", l)
 			}
 		}
 	}
