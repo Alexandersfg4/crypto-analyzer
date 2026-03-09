@@ -11,13 +11,14 @@ import (
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
-func (s *Service) GetListingsLatest(ctx context.Context, limit int) (models.ListingsLatestResponse, error) {
+func (s *Service) GetListingsLatest(ctx context.Context, start, limit int) (models.ListingsLatestResponse, error) {
 	var listingsLatest models.ListingsLatestResponse
 
 	u := url.URL{
 		Path: "/v3/cryptocurrency/listings/latest",
 		RawQuery: url.Values{
 			"limit": {strconv.Itoa(limit)},
+			"start": {strconv.Itoa(start)},
 		}.Encode(),
 	}
 
