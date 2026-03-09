@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -20,7 +21,7 @@ const (
 	envCoinmarketcapAPIKey = "API_KEY_COINMARKETCAP"
 	limitNews              = 20
 	limitCoins             = 100
-	timeoutWork            = time.Second * 10
+	timeoutWork            = time.Second * 20
 )
 
 var (
@@ -67,7 +68,7 @@ type data struct {
 	news           models.GetNewsResponse
 	fearAndGreed   models.FearAndGreed
 	marketCap      models.MarketCap
-	listingsLatest models.ListingsLatestResponse
+	listingsLatest []models.ListingsLatestData
 	protocols      models.GetProtocolsResponse
 }
 
@@ -102,11 +103,13 @@ func parseCSV(value string) []string {
 
 func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string, opts requestOptions) (data, error) {
 	var (
-		result  data
-		wg      sync.WaitGroup
-		mu      sync.Mutex
-		newsMap = make(map[string]models.News)
-		errCh   = make(chan error, 8)
+		result                     data
+		wg                         sync.WaitGroup
+		mu                         sync.Mutex
+		newsMap                    = make(map[string]models.News)
+		errCh                      = make(chan error, 8)
+		listingsLatestDataCh       = make(chan []models.ListingsLatestData)
+		secondListingsLatestDoneCh = make(chan struct{})
 	)
 
 	ctx, cancel := context.WithTimeout(ctx, timeoutWork)
@@ -161,10 +164,7 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string, o
 			result.marketCap = gotMarketCap
 			mu.Unlock()
 		},
-	}
-
-	if opts.hasProtocols() {
-		jobs = append(jobs, func() {
+		func() {
 			gotProtocols, err := srvDefillama.GetProtocols(ctx)
 			if err != nil {
 				errCh <- fmt.Errorf("error getting protocols: %w", err)
@@ -173,20 +173,39 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string, o
 			mu.Lock()
 			result.protocols = gotProtocols
 			mu.Unlock()
-		})
-	}
+		},
+		func() {
+			for data := range listingsLatestDataCh {
+				mu.Lock()
+				result.listingsLatest = append(result.listingsLatest, data...)
+				mu.Unlock()
+			}
+		},
+		func() {
+			defer func() {
+				<-secondListingsLatestDoneCh
+				close(listingsLatestDataCh)
+			}()
 
-	if opts.hasTokens() {
-		jobs = append(jobs, func() {
-			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, limitCoins)
+			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, 1, limitCoins)
 			if err != nil {
 				errCh <- fmt.Errorf("error listings latests: %w", err)
 				return
 			}
-			mu.Lock()
-			result.listingsLatest = gotCoins
-			mu.Unlock()
-		})
+			listingsLatestDataCh <- gotCoins.Data
+		},
+		func() {
+			defer func() {
+				secondListingsLatestDoneCh <- struct{}{}
+			}()
+
+			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, 2, limitCoins)
+			if err != nil {
+				errCh <- fmt.Errorf("error listings latests: %w", err)
+				return
+			}
+			listingsLatestDataCh <- gotCoins.Data
+		},
 	}
 
 	for _, j := range jobs {
@@ -276,9 +295,23 @@ func showMarketCap(gotMarketCap models.MarketCap) {
 	fmt.Println()
 }
 
-func showCoins(gotCoins models.ListingsLatestResponse, tokens []string) {
+func showCoins(gotCoins []models.ListingsLatestData, tokens []string) {
+	slices.SortStableFunc(gotCoins, func(a, b models.ListingsLatestData) int {
+		if a.CmcRank < b.CmcRank {
+			return -1
+		}
+		if a.CmcRank > b.CmcRank {
+			return 1
+		}
+
+		return 0
+	})
+
 	fmt.Println("<TOKENS>")
 	if len(tokens) == 0 {
+		for _, c := range gotCoins {
+			showTokenInfo(c)
+		}
 		fmt.Println("</TOKENS>")
 		fmt.Println()
 		return
@@ -289,62 +322,74 @@ func showCoins(gotCoins models.ListingsLatestResponse, tokens []string) {
 		tokenSet[strings.ToUpper(t)] = struct{}{}
 	}
 
-	for _, c := range gotCoins.Data {
+	for _, c := range gotCoins {
 		if _, ok := tokenSet[c.Symbol]; !ok {
 			continue
 		}
 
-		fmt.Printf("Name: %s\n", c.Name)
-		fmt.Printf("Symbol: %s\n", c.Symbol)
-		fmt.Println("<Quotes>")
-		for _, q := range c.Quote {
-			fmt.Printf("<%s>\n", q.Symbol)
-			fmt.Printf("Price: %f\n", q.Price)
-			fmt.Printf("Volume for 24h: %f\n", q.Volume24h)
-			fmt.Printf("Market Cap: %f\n", q.MarketCap)
-			fmt.Printf("Price changed 1 hour: %f%%\n", q.PercentChange1h)
-			fmt.Printf("Price changed 24 hours: %f%%\n", q.PercentChange24h)
-			fmt.Printf("Price changed 7 days: %f%%\n", q.PercentChange7d)
-			fmt.Printf("Price changed 90 days: %f%%\n", q.PercentChange90d)
-			fmt.Printf("</%s>\n", q.Symbol)
-		}
-		fmt.Println("</Quotes>")
+		showTokenInfo(c)
 	}
 	fmt.Println("</TOKENS>")
 	fmt.Println()
 }
 
+func showTokenInfo(c models.ListingsLatestData) {
+	fmt.Printf("Name: %s\n", c.Name)
+	fmt.Printf("Symbol: %s\n", c.Symbol)
+	fmt.Println("<Quotes>")
+	for _, q := range c.Quote {
+		fmt.Printf("<%s>\n", q.Symbol)
+		fmt.Printf("Price: %f\n", q.Price)
+		fmt.Printf("Volume for 24h: %f\n", q.Volume24h)
+		fmt.Printf("Market Cap: %f\n", q.MarketCap)
+		fmt.Printf("Price changed 1 hour: %f%%\n", q.PercentChange1h)
+		fmt.Printf("Price changed 24 hours: %f%%\n", q.PercentChange24h)
+		fmt.Printf("Price changed 7 days: %f%%\n", q.PercentChange7d)
+		fmt.Printf("Price changed 90 days: %f%%\n", q.PercentChange90d)
+		fmt.Printf("</%s>\n", q.Symbol)
+	}
+	fmt.Println("</Quotes>")
+}
+
 func showProtocols(gotProtocols models.GetProtocolsResponse, protocols []string) {
 	fmt.Println("<PROTOCOLS>")
 	if len(protocols) == 0 {
+		for _, p := range gotProtocols {
+			if p.Tvl > 0 {
+				showProtocolData(p)
+			}
+		}
 		fmt.Println("</PROTOCOLS>")
 		fmt.Println()
 		return
 	}
 
-	lowerFilters := make([]string, 0, len(protocols))
+	upperFilters := make(map[string]bool, len(protocols))
 	for _, p := range protocols {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
 		}
-		lowerFilters = append(lowerFilters, strings.ToLower(p))
+
+		upperFilters[strings.ToUpper(p)] = true
 	}
 
 	for _, p := range gotProtocols {
-		for _, l := range lowerFilters {
-			if strings.Contains(strings.ToLower(p.Name), l) && p.Tvl > 0 {
-				fmt.Printf("Name: %s\n", p.Name)
-				fmt.Printf("Symbol: %s\n", p.Symbol)
-				fmt.Printf("Description: %s\n", p.Description)
-				fmt.Printf("Category: %s\n", p.Category)
-				fmt.Printf("TVL: %f$\n", p.Tvl)
-				fmt.Printf("Price changed 1 hour: %f%%\n", p.Change1h)
-				fmt.Printf("Price changed 24 hours: %f%%\n", p.Change1d)
-				fmt.Printf("Price changed 7 days: %f%%\n", p.Change7d)
-			}
+		if p.Tvl > 0 && upperFilters[p.Symbol] {
+			showProtocolData(p)
 		}
 	}
 	fmt.Println("</PROTOCOLS>")
 	fmt.Println()
+}
+
+func showProtocolData(p models.Data) {
+	fmt.Printf("Name: %s\n", p.Name)
+	fmt.Printf("Symbol: %s\n", p.Symbol)
+	fmt.Printf("Description: %s\n", p.Description)
+	fmt.Printf("Category: %s\n", p.Category)
+	fmt.Printf("TVL: %f$\n", p.Tvl)
+	fmt.Printf("Price changed 1 hour: %f%%\n", p.Change1h)
+	fmt.Printf("Price changed 24 hours: %f%%\n", p.Change1d)
+	fmt.Printf("Price changed 7 days: %f%%\n", p.Change7d)
 }

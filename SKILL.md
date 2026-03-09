@@ -41,8 +41,9 @@ Use this workflow to produce a single combined report of market stats, sentiment
 1. Ensure the `crypto-analyzer` binary is installed and available on your PATH.
 2. Export `COINSTATS_API_KEY` and `API_KEY_COINMARKETCAP` in the current shell session.
 3. Run `crypto-analyzer` and summarize the four output sections for the user.
+4. Output contains TOKENS from TOP 100 coins by market cap and all available protocols with TVL > 0.
 
-Arguments:
+Optional Arguments(show info only for selected protocols/tokens):
 - `--protocols` — comma-separated protocol names to filter (e.g., Aave, Drift, Kamino).
 - `--tokens` — comma-separated token symbols to filter (e.g., BTC, ETH, SOL).
 
