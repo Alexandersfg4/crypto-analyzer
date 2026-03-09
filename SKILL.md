@@ -23,17 +23,19 @@ metadata:
 
 # Crypto Analyzer
 
-A Go-based CLI tool that aggregates Coinstats and CoinMarketCap data to provide a comprehensive snapshot of the cryptocurrency market in four tagged sections.
+A Go-based CLI tool that aggregates Coinstats, CoinMarketCap and [Defillama](https://defillama.com) data to provide a comprehensive snapshot of the cryptocurrency market in four tagged sections.
 
 ## When to use (trigger phrases)
 
 Use this skill when the user asks for:
 - “How is the crypto market doing?”
-- “What is the current Fear and Greed index?”
-- “Show me the latest crypto news.”
-- “Check Bitcoin/Ethereum prices.”
 - “Get a market overview.”
 - “run crypto-analyzer”
+- “What is the current Fear and Greed index?”
+- “Show me the latest crypto news.”
+- “Check Bitcoin/Ethereum prices.” -you should run with flags`crypto-analyzer --tokens=BTC,ETH`
+- “How is my DEX protocol doing?(AAVE, UNI)” - you should run with flags `crypto-analyzer --protocols=AAVE,UNI`
+- “How is my portfolio doing?(tokens: BTC, ETH, used DEX protocols: AAVE, UNI)” - you should run with flags `crypto-analyzer --tokens=BTC,ETH --protocols=AAVE,UNI`
 
 ## Quick start
 
@@ -41,10 +43,10 @@ Use this workflow to produce a single combined report of market stats, sentiment
 1. Ensure the `crypto-analyzer` binary is installed and available on your PATH.
 2. Export `COINSTATS_API_KEY` and `API_KEY_COINMARKETCAP` in the current shell session.
 3. Run `crypto-analyzer` and summarize the four output sections for the user.
-4. Output contains TOKENS from TOP 100 coins by market cap and all available protocols with TVL > 0.
+4. Output contains TOKENS from TOP 200 coins by market cap and all available protocols with TVL > 0.
 
 Optional Arguments(show info only for selected protocols/tokens):
-- `--protocols` — comma-separated protocol names to filter (e.g., Aave, Drift, Kamino).
+- `--protocols` — comma-separated protocol symbols to filter (e.g., Aave, Drift, Kamino).
 - `--tokens` — comma-separated token symbols to filter (e.g., BTC, ETH, SOL).
 
 Example:
