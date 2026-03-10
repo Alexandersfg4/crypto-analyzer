@@ -52,7 +52,7 @@ Optional Arguments(show info only for selected protocols/tokens):
 Example:
 ```sh
 export COINSTATS_API_KEY=... API_KEY_COINMARKETCAP=...
-crypto-analyzer --protocols=AAVE,Drift,Kamino --tokens=BTC,ETH,SUI
+crypto-analyzer --tokens=BTC,ETH,SUI --protocols=AAVE,Drift,Kamino
 ```
 
 ## Requirements & Setup

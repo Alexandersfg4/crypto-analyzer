@@ -95,5 +95,4 @@ Price changed 1 hour: 0.389966%
 Price changed 24 hours: 0.091805%
 Price changed 7 days: -0.114796%
 </PROTOCOLS>
-
 ```

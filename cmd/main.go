@@ -60,8 +60,8 @@ func main() {
 	showMarketCap(gotData.marketCap)
 	showFearAndGreed(gotData.fearAndGreed)
 	showCoins(gotData.listingsLatest, opts.tokens)
-	showNews(gotData.news)
 	showProtocols(gotData.protocols, opts.protocols)
+	showNews(gotData.news)
 }
 
 type data struct {
