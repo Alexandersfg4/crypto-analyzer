@@ -28,14 +28,15 @@ A Go-based CLI tool that aggregates Coinstats, CoinMarketCap and [Defillama](htt
 ## When to use (trigger phrases)
 
 Use this skill when the user asks for:
-- “How is the crypto market doing?”
-- “Get a market overview.”
-- “run crypto-analyzer”
-- “What is the current Fear and Greed index?”
-- “Show me the latest crypto news.”
-- “Check Bitcoin/Ethereum prices.” -you should run with flags`crypto-analyzer --tokens=BTC,ETH`
-- “How is my DEX protocol doing?(AAVE, UNI)” - you should run with flags `crypto-analyzer --protocols=AAVE,UNI`
-- “How is my portfolio doing?(tokens: BTC, ETH, used DEX protocols: AAVE, UNI)” - you should run with flags `crypto-analyzer --tokens=BTC,ETH --protocols=AAVE,UNI`
+- "How is the crypto market doing?"
+- "Get a market overview."
+- "run crypto-analyzer"
+- "What is the current Fear and Greed index?"
+- "Show me the latest crypto news."
+- "Check Bitcoin/Ethereum prices." -you should run with flags`crypto-analyzer --tokens=BTC,ETH`
+- "How is my DEX protocol doing?(AAVE, UNI)" - you should run with flags `crypto-analyzer --protocols=AAVE,UNI`
+- "How is my portfolio doing?(tokens: BTC, ETH, used DEX protocols: AAVE, UNI)" - you should run with flags `crypto-analyzer --tokens=BTC,ETH --protocols=AAVE,UNI`
+- "Save crypto-analyzer output to file" - you should run with flag `crypto-analyzer --store=/path/to/directory`
 
 ## Quick start
 
@@ -48,11 +49,18 @@ Use this workflow to produce a single combined report of market stats, sentiment
 Optional Arguments(show info only for selected protocols/tokens):
 - `--protocols` — comma-separated protocol symbols to filter (e.g., Aave, Drift, Kamino).
 - `--tokens` — comma-separated token symbols to filter (e.g., BTC, ETH, SOL).
+- `--store` — path to directory where output will be saved as `crypto-analyzer-{year}-{month}-{day}.txt`. If not provided, output is printed to stdout.
 
 Example:
 ```sh
 export COINSTATS_API_KEY=... API_KEY_COINMARKETCAP=...
 crypto-analyzer --tokens=BTC,ETH,SUI --protocols=AAVE,Drift,Kamino
+```
+
+Save output to file:
+```sh
+export COINSTATS_API_KEY=... API_KEY_COINMARKETCAP=...
+crypto-analyzer --store=/tmp/output --tokens=BTC,ETH
 ```
 
 ## Requirements & Setup

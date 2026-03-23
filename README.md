@@ -23,6 +23,12 @@ make install
 crypto-analyzer --protocols=AAVE,DRIFT --tokens=BTC,ETH,SUI
 ```
 
+Optional: Save output to file
+```sh
+crypto-analyzer --store=/path/to/directory
+```
+This saves output to `crypto-analyzer-{year}-{month}-{day}.txt` in the specified directory.
+
 Result example:
 ```sh
 <Market Capitalization>

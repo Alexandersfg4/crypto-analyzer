@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -27,6 +30,7 @@ const (
 var (
 	protocols = flag.String("protocols", "", "comma-separated list of protocols")
 	tokens    = flag.String("tokens", "", "comma-separated list of tokens")
+	store     = flag.String("store", "", "path to store output")
 )
 
 func main() {
@@ -57,11 +61,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	showMarketCap(gotData.marketCap)
-	showFearAndGreed(gotData.fearAndGreed)
-	showCoins(gotData.listingsLatest, opts.tokens)
-	showProtocols(gotData.protocols, opts.protocols)
-	showNews(gotData.news)
+	output := &bytes.Buffer{}
+	showMarketCap(output, gotData.marketCap)
+	showFearAndGreed(output, gotData.fearAndGreed)
+	showCoins(output, gotData.listingsLatest, opts.tokens)
+	showNews(output, gotData.news)
+	showProtocols(output, gotData.protocols, opts.protocols)
+
+	if *store != "" {
+		now := time.Now()
+		filename := fmt.Sprintf("crypto-analyzer-%d-%d-%d.txt", now.Year(), int(now.Month()), now.Day())
+		dirPath := filepath.Join(*store, filename)
+
+		if err := os.MkdirAll(*store, 0755); err != nil {
+			fmt.Println("creating directory: ", err.Error())
+			os.Exit(1)
+		}
+
+		if err := os.WriteFile(dirPath, output.Bytes(), 0644); err != nil {
+			fmt.Println("writing file: ", err.Error())
+			os.Exit(1)
+		}
+		fmt.Println("Output saved to:", dirPath)
+	} else {
+		io.Copy(os.Stdout, output)
+	}
 }
 
 type data struct {
@@ -234,68 +258,72 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string, o
 	return result, nil
 }
 
-func showNews(gotNews models.GetNewsResponse) {
-	fmt.Println("<NEWS>")
+func showNews(w io.Writer, gotNews models.GetNewsResponse) {
+	fmt.Fprintln(w, "<NEWS>")
 	for _, news := range gotNews {
-		fmt.Printf("Title: %s\n", news.Title)
+		fmt.Fprintf(w, "Title: %s\n", news.Title)
 		if news.Description != "" {
-			fmt.Printf("Description: %s\n", news.Description)
+			fmt.Fprintf(w, "Description: %s\n", news.Description)
 		}
-		fmt.Printf("Source: %s\n", news.Source)
-		fmt.Printf("Link: %s\n", news.Link)
+		fmt.Fprintf(w, "Source: %s\n", news.Source)
+		fmt.Fprintf(w, "Link: %s\n", news.Link)
 		coins := make([]string, 0, len(news.Coins))
 		for _, coin := range news.Coins {
 			coins = append(coins, coin.CoinIDKeyWords)
 		}
 		if len(coins) > 0 {
-			fmt.Println("Affected coins: ", coins)
+			fmt.Fprintln(w, "Affected coins: ", coins)
 		}
 	}
 
-	fmt.Println("</NEWS>")
-	fmt.Println()
+	fmt.Fprintln(w, "</NEWS>")
+	fmt.Fprintln(w)
 }
 
-func showFearAndGreed(gotFearAndGreed models.FearAndGreed) {
-	fmt.Println("<Fear and Greed Index now>")
-	fmt.Printf("Value: %d\n", gotFearAndGreed.Now.Value)
-	fmt.Printf("Classification: %s\n", gotFearAndGreed.Now.ValueClassification)
-	fmt.Printf("Updated at: %s\n", gotFearAndGreed.Now.UpdateTime)
-	fmt.Println("Fear and Greed Index yesterday")
-	fmt.Printf("Value: %d\n", gotFearAndGreed.Yesterday.Value)
-	fmt.Printf("Classification: %s\n", gotFearAndGreed.Yesterday.ValueClassification)
-	fmt.Println("Fear and Greed Index last week")
-	fmt.Printf("Value: %d\n", gotFearAndGreed.LastWeek.Value)
-	fmt.Printf("Classification: %s\n", gotFearAndGreed.LastWeek.ValueClassification)
-	fmt.Println("</Fear and Greed Index now>")
-	fmt.Println()
+func showFearAndGreed(w io.Writer, gotFearAndGreed models.FearAndGreed) {
+	fmt.Fprintln(w, "<Fear and Greed Index now>")
+	fmt.Fprintf(w, "Value: %d\n", gotFearAndGreed.Now.Value)
+	fmt.Fprintf(w, "Classification: %s\n", gotFearAndGreed.Now.ValueClassification)
+	fmt.Fprintf(w, "Updated at: %s\n", gotFearAndGreed.Now.UpdateTime)
+	fmt.Fprintln(w, "Fear and Greed Index yesterday")
+	fmt.Fprintf(w, "Value: %d\n", gotFearAndGreed.Yesterday.Value)
+	fmt.Fprintf(w, "Classification: %s\n", gotFearAndGreed.Yesterday.ValueClassification)
+	fmt.Fprintln(w, "Fear and Greed Index last week")
+	fmt.Fprintf(w, "Value: %d\n", gotFearAndGreed.LastWeek.Value)
+	fmt.Fprintf(w, "Classification: %s\n", gotFearAndGreed.LastWeek.ValueClassification)
+	fmt.Fprintln(w, "</Fear and Greed Index now>")
+	fmt.Fprintln(w)
 }
 
-func showMarketCap(gotMarketCap models.MarketCap) {
-	fmt.Println("<Market Capitalization>")
-	fmt.Printf(
+func showMarketCap(w io.Writer, gotMarketCap models.MarketCap) {
+	fmt.Fprintln(w, "<Market Capitalization>")
+	fmt.Fprintf(
+		w,
 		"Total market capitalization of all cryptocurrencies : %d$\n",
 		gotMarketCap.MarketCap,
 	)
-	fmt.Printf(
+	fmt.Fprintf(
+		w,
 		"Total 24-hour trading volume across all cryptocurrencies: %d$\n",
 		gotMarketCap.Volume,
 	)
-	fmt.Printf(
+	fmt.Fprintf(
+		w,
 		"Bitcoin's percentage share of the total cryptocurrency market capitalization: %f%%\n",
 		gotMarketCap.BtcDominance,
 	)
-	fmt.Printf(
+	fmt.Fprintf(
+		w,
 		"24-hour change in total market capitalization: %f%%\n",
 		gotMarketCap.MarketCapChange,
 	)
-	fmt.Printf("24-hour change in total trading volume: %f%%\n", gotMarketCap.VolumeChange)
-	fmt.Printf("24-hour change in Bitcoin dominance: %f%%\n", gotMarketCap.BtcDominanceChange)
-	fmt.Println("</Market Capitalization>")
-	fmt.Println()
+	fmt.Fprintf(w, "24-hour change in total trading volume: %f%%\n", gotMarketCap.VolumeChange)
+	fmt.Fprintf(w, "24-hour change in Bitcoin dominance: %f%%\n", gotMarketCap.BtcDominanceChange)
+	fmt.Fprintln(w, "</Market Capitalization>")
+	fmt.Fprintln(w)
 }
 
-func showCoins(gotCoins []models.ListingsLatestData, tokens []string) {
+func showCoins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 	slices.SortStableFunc(gotCoins, func(a, b models.ListingsLatestData) int {
 		if a.CmcRank < b.CmcRank {
 			return -1
@@ -307,13 +335,13 @@ func showCoins(gotCoins []models.ListingsLatestData, tokens []string) {
 		return 0
 	})
 
-	fmt.Println("<TOKENS>")
+	fmt.Fprintln(w, "<TOKENS>")
 	if len(tokens) == 0 {
 		for _, c := range gotCoins {
-			showTokenInfo(c)
+			showTokenInfo(w, c)
 		}
-		fmt.Println("</TOKENS>")
-		fmt.Println()
+		fmt.Fprintln(w, "</TOKENS>")
+		fmt.Fprintln(w)
 		return
 	}
 
@@ -327,40 +355,40 @@ func showCoins(gotCoins []models.ListingsLatestData, tokens []string) {
 			continue
 		}
 
-		showTokenInfo(c)
+		showTokenInfo(w, c)
 	}
-	fmt.Println("</TOKENS>")
-	fmt.Println()
+	fmt.Fprintln(w, "</TOKENS>")
+	fmt.Fprintln(w)
 }
 
-func showTokenInfo(c models.ListingsLatestData) {
-	fmt.Printf("Name: %s\n", c.Name)
-	fmt.Printf("Symbol: %s\n", c.Symbol)
-	fmt.Println("<Quotes>")
+func showTokenInfo(w io.Writer, c models.ListingsLatestData) {
+	fmt.Fprintf(w, "Name: %s\n", c.Name)
+	fmt.Fprintf(w, "Symbol: %s\n", c.Symbol)
+	fmt.Fprintln(w, "<Quotes>")
 	for _, q := range c.Quote {
-		fmt.Printf("<%s>\n", q.Symbol)
-		fmt.Printf("Price: %f\n", q.Price)
-		fmt.Printf("Volume for 24h: %f\n", q.Volume24h)
-		fmt.Printf("Market Cap: %f\n", q.MarketCap)
-		fmt.Printf("Price changed 1 hour: %f%%\n", q.PercentChange1h)
-		fmt.Printf("Price changed 24 hours: %f%%\n", q.PercentChange24h)
-		fmt.Printf("Price changed 7 days: %f%%\n", q.PercentChange7d)
-		fmt.Printf("Price changed 90 days: %f%%\n", q.PercentChange90d)
-		fmt.Printf("</%s>\n", q.Symbol)
+		fmt.Fprintf(w, "<%s>\n", q.Symbol)
+		fmt.Fprintf(w, "Price: %f\n", q.Price)
+		fmt.Fprintf(w, "Volume for 24h: %f\n", q.Volume24h)
+		fmt.Fprintf(w, "Market Cap: %f\n", q.MarketCap)
+		fmt.Fprintf(w, "Price changed 1 hour: %f%%\n", q.PercentChange1h)
+		fmt.Fprintf(w, "Price changed 24 hours: %f%%\n", q.PercentChange24h)
+		fmt.Fprintf(w, "Price changed 7 days: %f%%\n", q.PercentChange7d)
+		fmt.Fprintf(w, "Price changed 90 days: %f%%\n", q.PercentChange90d)
+		fmt.Fprintf(w, "</%s>\n", q.Symbol)
 	}
-	fmt.Println("</Quotes>")
+	fmt.Fprintln(w, "</Quotes>")
 }
 
-func showProtocols(gotProtocols models.GetProtocolsResponse, protocols []string) {
-	fmt.Println("<PROTOCOLS>")
+func showProtocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols []string) {
+	fmt.Fprintln(w, "<PROTOCOLS>")
 	if len(protocols) == 0 {
 		for _, p := range gotProtocols {
 			if p.Tvl > 0 {
-				showProtocolData(p)
+				showProtocolData(w, p)
 			}
 		}
-		fmt.Println("</PROTOCOLS>")
-		fmt.Println()
+		fmt.Fprintln(w, "</PROTOCOLS>")
+		fmt.Fprintln(w)
 		return
 	}
 
@@ -376,20 +404,20 @@ func showProtocols(gotProtocols models.GetProtocolsResponse, protocols []string)
 
 	for _, p := range gotProtocols {
 		if p.Tvl > 0 && upperFilters[p.Symbol] {
-			showProtocolData(p)
+			showProtocolData(w, p)
 		}
 	}
-	fmt.Println("</PROTOCOLS>")
-	fmt.Println()
+	fmt.Fprintln(w, "</PROTOCOLS>")
+	fmt.Fprintln(w)
 }
 
-func showProtocolData(p models.Data) {
-	fmt.Printf("Name: %s\n", p.Name)
-	fmt.Printf("Symbol: %s\n", p.Symbol)
-	fmt.Printf("Description: %s\n", p.Description)
-	fmt.Printf("Category: %s\n", p.Category)
-	fmt.Printf("TVL: %f$\n", p.Tvl)
-	fmt.Printf("Price changed 1 hour: %f%%\n", p.Change1h)
-	fmt.Printf("Price changed 24 hours: %f%%\n", p.Change1d)
-	fmt.Printf("Price changed 7 days: %f%%\n", p.Change7d)
+func showProtocolData(w io.Writer, p models.Data) {
+	fmt.Fprintf(w, "Name: %s\n", p.Name)
+	fmt.Fprintf(w, "Symbol: %s\n", p.Symbol)
+	fmt.Fprintf(w, "Description: %s\n", p.Description)
+	fmt.Fprintf(w, "Category: %s\n", p.Category)
+	fmt.Fprintf(w, "TVL: %f$\n", p.Tvl)
+	fmt.Fprintf(w, "Price changed 1 hour: %f%%\n", p.Change1h)
+	fmt.Fprintf(w, "Price changed 24 hours: %f%%\n", p.Change1d)
+	fmt.Fprintf(w, "Price changed 7 days: %f%%\n", p.Change7d)
 }
