@@ -223,7 +223,7 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string, o
 				secondListingsLatestDoneCh <- struct{}{}
 			}()
 
-			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, 2, limitCoins)
+			gotCoins, err := srvCoinmarketcap.GetListingsLatest(ctx, 101, limitCoins)
 			if err != nil {
 				errCh <- fmt.Errorf("error listings latests: %w", err)
 				return
@@ -306,7 +306,7 @@ func showMarketCap(w io.Writer, gotMarketCap models.MarketCap) {
 	)
 	fmt.Fprintf(
 		w,
-		"BTC Dom: _%f%%_\n",
+		"BTC Dominance: _%f%%_\n",
 		gotMarketCap.BtcDominance,
 	)
 	fmt.Fprintf(
@@ -379,7 +379,7 @@ func showCoins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []strin
 
 func showTokenInfo(w io.Writer, c models.ListingsLatestData) {
 	q := c.UsdQuote()
-	fmt.Fprintf(w, "%s: _%.2f$_ (1h: %.2f, 24h: %.2f, 7d: %.2f%%, 90d: %.2f%%)\n", c.Symbol, q.Price, q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d)
+	fmt.Fprintf(w, "%s: _%.2f$_ - 1h: %.2f, 24h: %.2f, 7d: %.2f%%, 90d: %.2f%%\n", c.Symbol, q.Price, q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d)
 }
 
 func showProtocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols []string) {
@@ -412,6 +412,6 @@ func showProtocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protoc
 }
 
 func showProtocolData(w io.Writer, p models.Data) {
-	fmt.Fprintf(w, "*%s\n(%s)* - %s - %s:\n", p.Name, p.Symbol, p.Description, p.Category)
-	fmt.Fprintf(w, "TVL: _%f$_(changed 1 hour: %f%%, 24h: %f%%, 7d: %f%%)\n", p.Tvl, p.Change1h, p.Change1d, p.Change7d)
+	fmt.Fprintf(w, "*%s - %s* - %s - %s:\n", p.Name, p.Symbol, p.Description, p.Category)
+	fmt.Fprintf(w, "TVL: _%f$_ - changed 1 hour: %f%%, 24h: %f%%, 7d: %f%%\n", p.Tvl, p.Change1h, p.Change1d, p.Change7d)
 }
