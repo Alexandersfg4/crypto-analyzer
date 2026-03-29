@@ -259,67 +259,63 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string, o
 }
 
 func showNews(w io.Writer, gotNews models.GetNewsResponse) {
-	fmt.Fprintln(w, "<NEWS>")
+	fmt.Fprintln(w, "🔥 Top News")
 	for _, news := range gotNews {
-		fmt.Fprintf(w, "Title: %s\n", news.Title)
+		fmt.Fprintf(w, "**>[%s](%s)\n", news.Title, news.Link)
 		if news.Description != "" {
-			fmt.Fprintf(w, "Description: %s\n", news.Description)
+			fmt.Fprintf(w, ">%s\n", news.Description)
 		}
-		fmt.Fprintf(w, "Source: %s\n", news.Source)
-		fmt.Fprintf(w, "Link: %s\n", news.Link)
 		coins := make([]string, 0, len(news.Coins))
 		for _, coin := range news.Coins {
 			coins = append(coins, coin.CoinIDKeyWords)
 		}
 		if len(coins) > 0 {
-			fmt.Fprintln(w, "Affected coins: ", coins)
+			fmt.Fprintln(w, ">affected coins: ", coins)
 		}
 	}
 
-	fmt.Fprintln(w, "</NEWS>")
 	fmt.Fprintln(w)
 }
 
 func showFearAndGreed(w io.Writer, gotFearAndGreed models.FearAndGreed) {
-	fmt.Fprintln(w, "<Fear and Greed Index now>")
-	fmt.Fprintf(w, "Value: %d\n", gotFearAndGreed.Now.Value)
-	fmt.Fprintf(w, "Classification: %s\n", gotFearAndGreed.Now.ValueClassification)
-	fmt.Fprintf(w, "Updated at: %s\n", gotFearAndGreed.Now.UpdateTime)
-	fmt.Fprintln(w, "Fear and Greed Index yesterday")
-	fmt.Fprintf(w, "Value: %d\n", gotFearAndGreed.Yesterday.Value)
-	fmt.Fprintf(w, "Classification: %s\n", gotFearAndGreed.Yesterday.ValueClassification)
-	fmt.Fprintln(w, "Fear and Greed Index last week")
-	fmt.Fprintf(w, "Value: %d\n", gotFearAndGreed.LastWeek.Value)
-	fmt.Fprintf(w, "Classification: %s\n", gotFearAndGreed.LastWeek.ValueClassification)
-	fmt.Fprintln(w, "</Fear and Greed Index now>")
+	fmt.Fprintln(w, "😨 *Fear and Greed Index*")
+	fmt.Fprintln(w, "_Fear and Greed Index today_")
+	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.Now.Value)
+	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.Now.ValueClassification)
+	fmt.Fprintf(w, "Updated at: _%s_\n", gotFearAndGreed.Now.UpdateTime)
+	fmt.Fprintln(w, "_Fear and Greed Index yesterday_")
+	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.Yesterday.Value)
+	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.Yesterday.ValueClassification)
+	fmt.Fprintln(w, "_Fear and Greed Index last week_")
+	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.LastWeek.Value)
+	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.LastWeek.ValueClassification)
 	fmt.Fprintln(w)
 }
 
 func showMarketCap(w io.Writer, gotMarketCap models.MarketCap) {
-	fmt.Fprintln(w, "<Market Capitalization>")
+	fmt.Fprintln(w, "📊 *Market Capitalization*")
 	fmt.Fprintf(
 		w,
-		"Total market capitalization of all cryptocurrencies : %d$\n",
+		"Market Cap: _%d$_\n",
 		gotMarketCap.MarketCap,
 	)
 	fmt.Fprintf(
 		w,
-		"Total 24-hour trading volume across all cryptocurrencies: %d$\n",
+		"Volume: _%d$_\n",
 		gotMarketCap.Volume,
 	)
 	fmt.Fprintf(
 		w,
-		"Bitcoin's percentage share of the total cryptocurrency market capitalization: %f%%\n",
+		"BTC Dom: _%f%%_\n",
 		gotMarketCap.BtcDominance,
 	)
 	fmt.Fprintf(
 		w,
-		"24-hour change in total market capitalization: %f%%\n",
+		"24-hour change in cap: _%.2f%%_\n",
 		gotMarketCap.MarketCapChange,
 	)
-	fmt.Fprintf(w, "24-hour change in total trading volume: %f%%\n", gotMarketCap.VolumeChange)
-	fmt.Fprintf(w, "24-hour change in Bitcoin dominance: %f%%\n", gotMarketCap.BtcDominanceChange)
-	fmt.Fprintln(w, "</Market Capitalization>")
+	fmt.Fprintf(w, "24-hour change in total trading volume: _%f%%_\n", gotMarketCap.VolumeChange)
+	fmt.Fprintf(w, "24-hour change in Bitcoin dominance: _%f%%_\n", gotMarketCap.BtcDominanceChange)
 	fmt.Fprintln(w)
 }
 
@@ -335,12 +331,11 @@ func showCoins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []strin
 		return 0
 	})
 
-	fmt.Fprintln(w, "<TOKENS>")
+	fmt.Fprintln(w, "₿ *Tokens*")
 	if len(tokens) == 0 {
 		for _, c := range gotCoins {
 			showTokenInfo(w, c)
 		}
-		fmt.Fprintln(w, "</TOKENS>")
 		fmt.Fprintln(w)
 		return
 	}
@@ -357,38 +352,43 @@ func showCoins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []strin
 
 		showTokenInfo(w, c)
 	}
-	fmt.Fprintln(w, "</TOKENS>")
+
+	coindByChanges90d := slices.SortedFunc(gotCoins, func(a, b models.ListingsLatestData) int {
+		if a.UsdQuote().PercentChange90d < b.UsdQuote().PercentChange90d {
+			return -1
+		}
+		if a.UsdQuote().PercentChange90d > b.UsdQuote().PercentChange90d {
+			return 1
+		}
+
+		return 0
+	})
+
+	fmt.Fprintln(w, "📈 *Gainers by 90d change*")
+	for _, c := range coindByChanges90d[:5] {
+		showTokenInfo(w, c)
+	}
+	fmt.Fprintln(w, "📉 *Losers by 90d change*")
+	for _, c := range coindByChanges90d[len(coindByChanges90d)-5:] {
+		showTokenInfo(w, c)
+	}
+
 	fmt.Fprintln(w)
 }
 
 func showTokenInfo(w io.Writer, c models.ListingsLatestData) {
-	fmt.Fprintf(w, "Name: %s\n", c.Name)
-	fmt.Fprintf(w, "Symbol: %s\n", c.Symbol)
-	fmt.Fprintln(w, "<Quotes>")
-	for _, q := range c.Quote {
-		fmt.Fprintf(w, "<%s>\n", q.Symbol)
-		fmt.Fprintf(w, "Price: %f\n", q.Price)
-		fmt.Fprintf(w, "Volume for 24h: %f\n", q.Volume24h)
-		fmt.Fprintf(w, "Market Cap: %f\n", q.MarketCap)
-		fmt.Fprintf(w, "Price changed 1 hour: %f%%\n", q.PercentChange1h)
-		fmt.Fprintf(w, "Price changed 24 hours: %f%%\n", q.PercentChange24h)
-		fmt.Fprintf(w, "Price changed 7 days: %f%%\n", q.PercentChange7d)
-		fmt.Fprintf(w, "Price changed 90 days: %f%%\n", q.PercentChange90d)
-		fmt.Fprintf(w, "</%s>\n", q.Symbol)
-	}
-	fmt.Fprintln(w, "</Quotes>")
+	q := c.UsdQuote()
+	fmt.Fprintf(w, "%s: _%.2f$_ (24h: %f, 7d: %f%%, 90d: %f%%)\n", c.Symbol, q.Price, q.Volume24h, q.PercentChange7d, q.PercentChange90d)
 }
 
 func showProtocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols []string) {
-	fmt.Fprintln(w, "<PROTOCOLS>")
+	fmt.Fprintln(w, "🚀 *DEX*")
 	if len(protocols) == 0 {
 		for _, p := range gotProtocols {
 			if p.Tvl > 0 {
 				showProtocolData(w, p)
 			}
 		}
-		fmt.Fprintln(w, "</PROTOCOLS>")
-		fmt.Fprintln(w)
 		return
 	}
 
@@ -407,17 +407,10 @@ func showProtocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protoc
 			showProtocolData(w, p)
 		}
 	}
-	fmt.Fprintln(w, "</PROTOCOLS>")
 	fmt.Fprintln(w)
 }
 
 func showProtocolData(w io.Writer, p models.Data) {
-	fmt.Fprintf(w, "Name: %s\n", p.Name)
-	fmt.Fprintf(w, "Symbol: %s\n", p.Symbol)
-	fmt.Fprintf(w, "Description: %s\n", p.Description)
-	fmt.Fprintf(w, "Category: %s\n", p.Category)
-	fmt.Fprintf(w, "TVL: %f$\n", p.Tvl)
-	fmt.Fprintf(w, "Price changed 1 hour: %f%%\n", p.Change1h)
-	fmt.Fprintf(w, "Price changed 24 hours: %f%%\n", p.Change1d)
-	fmt.Fprintf(w, "Price changed 7 days: %f%%\n", p.Change7d)
+	fmt.Fprintf(w, "*%s\n(%s)* - %s - %s:\n", p.Name, p.Symbol, p.Description, p.Category)
+	fmt.Fprintf(w, "TVL: _%f$_(changed 1 hour: %f%%, 24h: %f%%, 7d: %f%%)\n", p.Tvl, p.Change1h, p.Change1d, p.Change7d)
 }
