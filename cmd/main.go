@@ -331,7 +331,7 @@ func showCoins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []strin
 		return 0
 	})
 
-	fmt.Fprintln(w, "₿ *Tokens*")
+	fmt.Fprintln(w, "₿ *Listed tokens*")
 	if len(tokens) == 0 {
 		for _, c := range gotCoins {
 			showTokenInfo(w, c)
@@ -353,7 +353,8 @@ func showCoins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []strin
 		showTokenInfo(w, c)
 	}
 
-	coindByChanges90d := slices.SortedFunc(gotCoins, func(a, b models.ListingsLatestData) int {
+	coindByChanges90d := slices.Clone(gotCoins)
+	slices.SortStableFunc(coindByChanges90d, func(a, b models.ListingsLatestData) int {
 		if a.UsdQuote().PercentChange90d < b.UsdQuote().PercentChange90d {
 			return -1
 		}
@@ -378,7 +379,7 @@ func showCoins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []strin
 
 func showTokenInfo(w io.Writer, c models.ListingsLatestData) {
 	q := c.UsdQuote()
-	fmt.Fprintf(w, "%s: _%.2f$_ (24h: %f, 7d: %f%%, 90d: %f%%)\n", c.Symbol, q.Price, q.Volume24h, q.PercentChange7d, q.PercentChange90d)
+	fmt.Fprintf(w, "%s: _%.2f$_ (1h: %.2f, 24h: %.2f, 7d: %.2f%%, 90d: %.2f%%)\n", c.Symbol, q.Price, q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d)
 }
 
 func showProtocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols []string) {
