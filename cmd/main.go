@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/Alexandersfg4/crypto-analyzer/internal/coinmarketcap"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/coinstats"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/defillama"
+	"github.com/Alexandersfg4/crypto-analyzer/internal/formatter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
@@ -62,11 +62,11 @@ func main() {
 	}
 
 	output := &bytes.Buffer{}
-	showMarketCap(output, gotData.marketCap)
-	showFearAndGreed(output, gotData.fearAndGreed)
-	showCoins(output, gotData.listingsLatest, opts.tokens)
-	showNews(output, gotData.news)
-	showProtocols(output, gotData.protocols, opts.protocols)
+	formatter.MarketCap(output, gotData.marketCap)
+	formatter.FearAndGreed(output, gotData.fearAndGreed)
+	formatter.Coins(output, gotData.listingsLatest, opts.tokens)
+	formatter.News(output, gotData.news)
+	formatter.Protocols(output, gotData.protocols, opts.protocols)
 
 	if *store != "" {
 		now := time.Now()
@@ -256,162 +256,4 @@ func getData(ctx context.Context, coinstatsApiKey, coinmarketcapApiKey string, o
 	result.news = newsResult
 
 	return result, nil
-}
-
-func showNews(w io.Writer, gotNews models.GetNewsResponse) {
-	fmt.Fprintln(w, "🔥 Top News")
-	for _, news := range gotNews {
-		fmt.Fprintf(w, "**>[%s](%s)\n", news.Title, news.Link)
-		if news.Description != "" {
-			fmt.Fprintf(w, ">%s\n", news.Description)
-		}
-		coins := make([]string, 0, len(news.Coins))
-		for _, coin := range news.Coins {
-			coins = append(coins, coin.CoinIDKeyWords)
-		}
-		if len(coins) > 0 {
-			fmt.Fprintln(w, ">affected coins: ", coins)
-		}
-	}
-
-	fmt.Fprintln(w)
-}
-
-func showFearAndGreed(w io.Writer, gotFearAndGreed models.FearAndGreed) {
-	fmt.Fprintln(w, "😨 *Fear and Greed Index*")
-	fmt.Fprintln(w, "_Fear and Greed Index today_")
-	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.Now.Value)
-	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.Now.ValueClassification)
-	fmt.Fprintf(w, "Updated at: _%s_\n", gotFearAndGreed.Now.UpdateTime)
-	fmt.Fprintln(w, "_Fear and Greed Index yesterday_")
-	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.Yesterday.Value)
-	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.Yesterday.ValueClassification)
-	fmt.Fprintln(w, "_Fear and Greed Index last week_")
-	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.LastWeek.Value)
-	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.LastWeek.ValueClassification)
-	fmt.Fprintln(w)
-}
-
-func showMarketCap(w io.Writer, gotMarketCap models.MarketCap) {
-	fmt.Fprintln(w, "📊 *Market Capitalization*")
-	fmt.Fprintf(
-		w,
-		"Market Cap: _%d$_\n",
-		gotMarketCap.MarketCap,
-	)
-	fmt.Fprintf(
-		w,
-		"Volume: _%d$_\n",
-		gotMarketCap.Volume,
-	)
-	fmt.Fprintf(
-		w,
-		"BTC Dominance: _%f%%_\n",
-		gotMarketCap.BtcDominance,
-	)
-	fmt.Fprintf(
-		w,
-		"24-hour change in cap: _%.2f%%_\n",
-		gotMarketCap.MarketCapChange,
-	)
-	fmt.Fprintf(w, "24-hour change in total trading volume: _%f%%_\n", gotMarketCap.VolumeChange)
-	fmt.Fprintf(w, "24-hour change in Bitcoin dominance: _%f%%_\n", gotMarketCap.BtcDominanceChange)
-	fmt.Fprintln(w)
-}
-
-func showCoins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
-	slices.SortStableFunc(gotCoins, func(a, b models.ListingsLatestData) int {
-		if a.CmcRank < b.CmcRank {
-			return -1
-		}
-		if a.CmcRank > b.CmcRank {
-			return 1
-		}
-
-		return 0
-	})
-
-	fmt.Fprintln(w, "₿ *Listed tokens*")
-	if len(tokens) == 0 {
-		for _, c := range gotCoins {
-			showTokenInfo(w, c)
-		}
-		fmt.Fprintln(w)
-		return
-	}
-
-	tokenSet := make(map[string]struct{}, len(tokens))
-	for _, t := range tokens {
-		tokenSet[strings.ToUpper(t)] = struct{}{}
-	}
-
-	for _, c := range gotCoins {
-		if _, ok := tokenSet[c.Symbol]; !ok {
-			continue
-		}
-
-		showTokenInfo(w, c)
-	}
-
-	coindByChanges90d := slices.Clone(gotCoins)
-	slices.SortStableFunc(coindByChanges90d, func(a, b models.ListingsLatestData) int {
-		if a.UsdQuote().PercentChange90d < b.UsdQuote().PercentChange90d {
-			return -1
-		}
-		if a.UsdQuote().PercentChange90d > b.UsdQuote().PercentChange90d {
-			return 1
-		}
-
-		return 0
-	})
-
-	fmt.Fprintln(w, "📈 *Gainers by 90d change*")
-	for _, c := range coindByChanges90d[:5] {
-		showTokenInfo(w, c)
-	}
-	fmt.Fprintln(w, "📉 *Losers by 90d change*")
-	for _, c := range coindByChanges90d[len(coindByChanges90d)-5:] {
-		showTokenInfo(w, c)
-	}
-
-	fmt.Fprintln(w)
-}
-
-func showTokenInfo(w io.Writer, c models.ListingsLatestData) {
-	q := c.UsdQuote()
-	fmt.Fprintf(w, "%s: _%.2f$_ - 1h: %.2f, 24h: %.2f, 7d: %.2f%%, 90d: %.2f%%\n", c.Symbol, q.Price, q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d)
-}
-
-func showProtocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols []string) {
-	fmt.Fprintln(w, "🚀 *DEX*")
-	if len(protocols) == 0 {
-		for _, p := range gotProtocols {
-			if p.Tvl > 0 {
-				showProtocolData(w, p)
-			}
-		}
-		return
-	}
-
-	upperFilters := make(map[string]bool, len(protocols))
-	for _, p := range protocols {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-
-		upperFilters[strings.ToUpper(p)] = true
-	}
-
-	for _, p := range gotProtocols {
-		if p.Tvl > 0 && upperFilters[p.Symbol] {
-			showProtocolData(w, p)
-		}
-	}
-	fmt.Fprintln(w)
-}
-
-func showProtocolData(w io.Writer, p models.Data) {
-	fmt.Fprintf(w, "*%s - %s* - %s - %s:\n", p.Name, p.Symbol, p.Description, p.Category)
-	fmt.Fprintf(w, "TVL: _%f$_ - changed 1 hour: %f%%, 24h: %f%%, 7d: %f%%\n", p.Tvl, p.Change1h, p.Change1d, p.Change7d)
 }
