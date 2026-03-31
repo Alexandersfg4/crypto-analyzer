@@ -8,18 +8,15 @@ import (
 )
 
 func News(w io.Writer, gotNews models.GetNewsResponse) {
-	fmt.Fprintln(w, "🔥 Top News")
-	for _, news := range gotNews {
-		fmt.Fprintf(w, "[%s](%s)\n", news.Title, news.Link)
-		if news.Description != "" {
-			fmt.Fprintf(w, "%s\n", news.Description)
-		}
+	fmt.Fprintln(w, "🔥 *Top News*")
+	for i, news := range gotNews {
+		fmt.Fprintf(w, "%d. `%s`\n", i+1, news.Title)
 		coins := make([]string, 0, len(news.Coins))
 		for _, coin := range news.Coins {
-			coins = append(coins, coin.CoinIDKeyWords)
+			coins = append(coins, fmt.Sprintf("`%s`", coin.CoinNameKeyWords))
 		}
 		if len(coins) > 0 {
-			fmt.Fprintln(w, "affected coins: ", coins)
+			fmt.Fprintln(w, "	Affected coins: ", coins)
 		}
 	}
 

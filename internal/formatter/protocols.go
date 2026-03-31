@@ -39,5 +39,5 @@ func Protocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols 
 
 func protocolData(w io.Writer, p models.Data) {
 	fmt.Fprintf(w, "*%s - %s* - %s - %s:\n", p.Name, p.Symbol, p.Description, p.Category)
-	fmt.Fprintf(w, "TVL: _%f$_ - changed 1 hour: %f%%, 24h: %f%%, 7d: %f%%\n", p.Tvl, p.Change1h, p.Change1d, p.Change7d)
+	fmt.Fprintf(w, "TVL: _%.2f$_ - changed 1 hour: %.2f%%, 24h: %.2f%%, 7d: %.2f%%\n", p.Tvl, p.Change1h, p.Change1d, p.Change7d)
 }

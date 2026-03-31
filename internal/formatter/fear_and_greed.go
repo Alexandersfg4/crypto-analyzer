@@ -9,15 +9,9 @@ import (
 
 func FearAndGreed(w io.Writer, gotFearAndGreed models.FearAndGreed) {
 	fmt.Fprintln(w, "😨 *Fear and Greed Index*")
-	fmt.Fprintln(w, "_Fear and Greed Index today_")
-	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.Now.Value)
-	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.Now.ValueClassification)
+	fmt.Fprintf(w, "Fear and Greed Index today: *%d*(%s)\n", gotFearAndGreed.Now.Value, gotFearAndGreed.Now.ValueClassification)
 	fmt.Fprintf(w, "Updated at: _%s_\n", gotFearAndGreed.Now.UpdateTime)
-	fmt.Fprintln(w, "_Fear and Greed Index yesterday_")
-	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.Yesterday.Value)
-	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.Yesterday.ValueClassification)
-	fmt.Fprintln(w, "_Fear and Greed Index last week_")
-	fmt.Fprintf(w, "Value: _%d_\n", gotFearAndGreed.LastWeek.Value)
-	fmt.Fprintf(w, "Classification: _%s_\n", gotFearAndGreed.LastWeek.ValueClassification)
+	fmt.Fprintf(w, "Fear and Greed Index yesterday: *%d*(%s)\n", gotFearAndGreed.Yesterday.Value, gotFearAndGreed.Yesterday.ValueClassification)
+	fmt.Fprintf(w, "Fear and Greed Index last week: *%d*(%s)\n", gotFearAndGreed.LastWeek.Value, gotFearAndGreed.LastWeek.ValueClassification)
 	fmt.Fprintln(w)
 }
