@@ -6,14 +6,17 @@ import (
 	"strings"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
+	"github.com/dustin/go-humanize"
 )
 
 func Protocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols []string) {
 	fmt.Fprintln(w, "🚀 *DEX*")
+	var n int
 	if len(protocols) == 0 {
 		for _, p := range gotProtocols {
 			if p.Tvl > 0 {
-				protocolData(w, p)
+				n++
+				protocolData(w, n, p)
 			}
 		}
 		return
@@ -31,13 +34,14 @@ func Protocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols 
 
 	for _, p := range gotProtocols {
 		if p.Tvl > 0 && upperFilters[p.Symbol] {
-			protocolData(w, p)
+			n++
+			protocolData(w, n, p)
 		}
 	}
 	fmt.Fprintln(w)
 }
 
-func protocolData(w io.Writer, p models.Data) {
-	fmt.Fprintf(w, "*%s - %s* - %s - %s:\n", p.Name, p.Symbol, p.Description, p.Category)
-	fmt.Fprintf(w, "TVL: _%.2f$_ - changed 1 hour: %.2f%%, 24h: %.2f%%, 7d: %.2f%%\n", p.Tvl, p.Change1h, p.Change1d, p.Change7d)
+func protocolData(w io.Writer, n int, p models.Data) {
+	fmt.Fprintf(w, "%d.*%s | %s* | %s | %s:\n", n, p.Name, p.Symbol, p.Description, p.Category)
+	fmt.Fprintf(w, "TVL: *%s$* - changed 1 hour: _%.2f%%_, 24h: _%.2f%%_, 7d: _%.2f%%_\n", humanize.Commaf(p.Tvl), p.Change1h, p.Change1d, p.Change7d)
 }

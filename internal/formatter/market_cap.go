@@ -5,23 +5,24 @@ import (
 	"io"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
+	"github.com/dustin/go-humanize"
 )
 
 func MarketCap(w io.Writer, gotMarketCap models.MarketCap) {
 	fmt.Fprintln(w, "📊 *Market Capitalization*")
 	fmt.Fprintf(
 		w,
-		"Market Cap: _%d$_\n",
-		gotMarketCap.MarketCap,
+		"Market Cap: _%s$_\n",
+		humanize.Comma(gotMarketCap.MarketCap),
 	)
 	fmt.Fprintf(
 		w,
-		"Volume: _%d$_\n",
-		gotMarketCap.Volume,
+		"Volume: _%s$_\n",
+		humanize.Comma(gotMarketCap.Volume),
 	)
 	fmt.Fprintf(
 		w,
-		"BTC Dominance: _%f%%_\n",
+		"BTC Dominance: _%.2f%%_\n",
 		gotMarketCap.BtcDominance,
 	)
 	fmt.Fprintf(
@@ -29,7 +30,7 @@ func MarketCap(w io.Writer, gotMarketCap models.MarketCap) {
 		"24-hour change in cap: _%.2f%%_\n",
 		gotMarketCap.MarketCapChange,
 	)
-	fmt.Fprintf(w, "24-hour change in total trading volume: _%f%%_\n", gotMarketCap.VolumeChange)
-	fmt.Fprintf(w, "24-hour change in Bitcoin dominance: _%f%%_\n", gotMarketCap.BtcDominanceChange)
+	fmt.Fprintf(w, "24-hour change in total trading volume: _%.2f%%_\n", gotMarketCap.VolumeChange)
+	fmt.Fprintf(w, "24-hour change in Bitcoin dominance: _%.2f%%_\n", gotMarketCap.BtcDominanceChange)
 	fmt.Fprintln(w)
 }

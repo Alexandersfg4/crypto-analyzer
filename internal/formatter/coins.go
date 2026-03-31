@@ -69,5 +69,5 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 
 func showTokenInfo(w io.Writer, c models.ListingsLatestData) {
 	q := c.UsdQuote()
-	fmt.Fprintf(w, "`%s`: _%.2f$_ - 1h: %.2f, 24h: %.2f, 7d: %.2f%%, 90d: %.2f%%\n", c.Symbol, q.Price, q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d)
+	fmt.Fprintf(w, "`%s`: *%.2f$* | 1h: _%.2f_ | 24h: _%.2f_ | 7d: _%.2f%%_ | 90d: _%.2f%%_\n", c.Symbol, q.Price, q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d)
 }
