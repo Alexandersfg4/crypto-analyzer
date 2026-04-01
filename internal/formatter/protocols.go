@@ -6,11 +6,12 @@ import (
 	"strings"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
+	"github.com/Alexandersfg4/crypto-analyzer/pkg/direction"
 	"github.com/dustin/go-humanize"
 )
 
 func Protocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols []string) {
-	fmt.Fprintln(w, "🚀 *DEX*")
+	fmt.Fprintln(w, "⚖️🤖 *DEX*")
 	var n int
 	if len(protocols) == 0 {
 		for _, p := range gotProtocols {
@@ -42,6 +43,6 @@ func Protocols(w io.Writer, gotProtocols models.GetProtocolsResponse, protocols 
 }
 
 func protocolData(w io.Writer, n int, p models.Data) {
-	fmt.Fprintf(w, "%d.*%s | %s* | %s | %s:\n", n, p.Name, p.Symbol, p.Description, p.Category)
-	fmt.Fprintf(w, "TVL: *%s$* - changed 1 hour: _%.2f%%_, 24h: _%.2f%%_, 7d: _%.2f%%_\n", humanize.Commaf(p.Tvl), p.Change1h, p.Change1d, p.Change7d)
+	fmt.Fprintf(w, "%d. `%s` | %s | %s | %s\n", n, p.Name, p.Symbol, p.Description, p.Category)
+	fmt.Fprintf(w, "	TVL: *%s$* %s - changed 1 hour: _%.2f%%_, 24h: _%.2f%%_, 7d: _%.2f%%_\n", humanize.Commaf(p.Tvl), direction.Sign(p.Change1h, p.Change1d, p.Change7d), p.Change1h, p.Change1d, p.Change7d)
 }

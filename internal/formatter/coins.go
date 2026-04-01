@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
+	"github.com/Alexandersfg4/crypto-analyzer/pkg/direction"
 )
 
 func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
@@ -21,7 +22,7 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 		return 0
 	})
 
-	fmt.Fprintln(w, "₿ *Listed tokens*")
+	fmt.Fprintln(w, "*Listed tokens*")
 	if len(tokens) == 0 {
 		for _, c := range gotCoins {
 			showTokenInfo(w, c)
@@ -55,10 +56,13 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 		return 0
 	})
 
+	fmt.Println()
 	fmt.Fprintln(w, "📈 *Gainers by 90d change*")
 	for _, c := range coindByChanges90d[:5] {
 		showTokenInfo(w, c)
 	}
+
+	fmt.Println()
 	fmt.Fprintln(w, "📉 *Losers by 90d change*")
 	for _, c := range coindByChanges90d[len(coindByChanges90d)-5:] {
 		showTokenInfo(w, c)
@@ -69,5 +73,5 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 
 func showTokenInfo(w io.Writer, c models.ListingsLatestData) {
 	q := c.UsdQuote()
-	fmt.Fprintf(w, "`%s`: *%.2f$* | 1h: _%.2f_ | 24h: _%.2f_ | 7d: _%.2f%%_ | 90d: _%.2f%%_\n", c.Symbol, q.Price, q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d)
+	fmt.Fprintf(w, "`%s`: *%.2f$* %s | 1h: _%.2f_ | 24h: _%.2f_ | 7d: _%.2f%%_ | 90d: _%.2f%%_\n", c.Symbol, q.Price, direction.Sign(q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d), q.PercentChange1h, q.PercentChange24h, q.PercentChange7d, q.PercentChange90d)
 }
