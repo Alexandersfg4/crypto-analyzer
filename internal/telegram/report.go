@@ -3,7 +3,9 @@ package telegram
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/formatter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
@@ -36,11 +38,22 @@ func (c *Client) sendReport(ctx context.Context, chatID int64) {
 		c.sendMessage(ctx, chatID, "got err while generating report: "+err.Error())
 		return
 	}
-	capAndTokens := &bytes.Buffer{}
-	formatter.MarketCap(capAndTokens, data.MarketCap)
-	formatter.FearAndGreed(capAndTokens, data.FeatAndGreed)
-	formatter.Coins(capAndTokens, data.ListingsLatest, c.tokens)
-	c.sendMessage(ctx, chatID, capAndTokens.String())
+	// TODO: remove it
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		c.sendMessage(ctx, chatID, fmt.Sprintf("got err while marshalling data: %v", err))
+		return
+	}
+	os.WriteFile("text.json", jsonData, 0644)
+
+	cap := &bytes.Buffer{}
+	formatter.MarketCap(cap, data.MarketCap)
+	formatter.FearAndGreed(cap, data.FeatAndGreed)
+	c.sendMessage(ctx, chatID, cap.String())
+
+	tokens := &bytes.Buffer{}
+	formatter.Coins(tokens, data.ListingsLatest, c.tokens)
+	c.sendMessage(ctx, chatID, tokens.String())
 
 	news := &bytes.Buffer{}
 	formatter.News(news, data.News)
