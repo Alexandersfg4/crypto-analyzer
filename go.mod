@@ -7,4 +7,7 @@ require (
 	github.com/samber/lo v1.53.0
 )
 
-require golang.org/x/text v0.22.0 // indirect
+require (
+	github.com/go-telegram/bot v1.20.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
+)
