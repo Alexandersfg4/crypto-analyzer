@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/formatter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
@@ -44,7 +43,10 @@ func (c *Client) sendReport(ctx context.Context, chatID int64) {
 		c.sendMessage(ctx, chatID, fmt.Sprintf("got err while marshalling data: %v", err))
 		return
 	}
-	os.WriteFile("text.json", jsonData, 0644)
+	c.b.SendDocument(ctx, &bot.SendDocumentParams{
+		Document: &models.InputFileUpload{Filename: "report.json", Data: bytes.NewReader(jsonData)},
+		Caption:  "Document",
+	})
 
 	cap := &bytes.Buffer{}
 	formatter.MarketCap(cap, data.MarketCap)

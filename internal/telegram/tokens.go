@@ -25,7 +25,7 @@ func (c *Client) handleTokens(ctx context.Context, b *bot.Bot, update *models.Up
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Tokens updated successfully: %s", text),
+		Text:      fmt.Sprintf("Tokens updated successfully: %s", strings.Join(c.tokens, ", ")),
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
