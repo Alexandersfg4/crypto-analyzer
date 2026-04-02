@@ -64,10 +64,11 @@ func (c *Client) sendMessage(ctx context.Context, chatID int64, text string) err
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
-		}).Error("send messge with err")
+		}).Error("send messge with err ", text)
 		c.b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatID,
-			Text:   text,
+			ChatID:    chatID,
+			Text:      text,
+			ParseMode: models.ParseModeMarkdownV1,
 		})
 	}
 

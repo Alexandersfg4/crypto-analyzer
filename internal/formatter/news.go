@@ -3,7 +3,6 @@ package formatter
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/samber/lo"
@@ -12,7 +11,7 @@ import (
 func News(w io.Writer, gotNews models.GetNewsResponse) {
 	fmt.Fprintln(w, "🔥 *Top News*")
 	for i, news := range gotNews {
-		fmt.Fprintf(w, "%d. [%s](%s)\n", i+1, clearFromInvalidChars(news.Title), news.Link)
+		fmt.Fprintf(w, "%d. [%s](%s)\n", i+1, news.Title, news.Link)
 		coins := make(map[string]bool, len(news.Coins))
 		for _, coin := range news.Coins {
 			coins[fmt.Sprintf("`%s`", coin.CoinNameKeyWords)] = true
@@ -23,8 +22,4 @@ func News(w io.Writer, gotNews models.GetNewsResponse) {
 	}
 
 	fmt.Fprintln(w)
-}
-
-func clearFromInvalidChars(s string) string {
-	return strings.ReplaceAll(s, ".", "")
 }
