@@ -90,9 +90,10 @@ type Client struct {
 	reportCron *cron.Cron
 }
 
-func New(apiToken string, r *report.Report) (*Client, error) {
+func New(apiToken string, userID int64, r *report.Report) (*Client, error) {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handleDefault),
+		bot.WithMiddlewares(Auth(userID)),
 	}
 
 	b, err := bot.New(apiToken, opts...)

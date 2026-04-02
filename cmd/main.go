@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -20,6 +21,7 @@ const (
 	envCoinstatsAPIKey     = "COINSTATS_API_KEY"
 	envCoinmarketcapAPIKey = "API_KEY_COINMARKETCAP"
 	envTelegramToken       = "TELEGRAM_API_TOKEN"
+	envTelegramUserID      = "TELEGRAM_USER_ID"
 )
 
 func init() {
@@ -54,6 +56,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	telegramUserID, ok := os.LookupEnv(envTelegramUserID)
+	if !ok {
+		fmt.Println("env TELEGRAM_USER_ID not found")
+		os.Exit(1)
+	}
+
+	telegramUserIDInt, err := strconv.ParseInt(telegramUserID, 10, 64)
+	if err != nil {
+		fmt.Println("failed to parse TELEGRAM_USER_ID: ", err.Error())
+		os.Exit(1)
+	}
+
 	ctx := context.Background()
 
 	coinmarketcapSrv := coinmarketcap.NewService(apiKeyCoinmarketcap)
@@ -62,7 +76,7 @@ func main() {
 
 	r := report.New(coinmarketcapSrv, coinstatsSrv, defillamaSrv)
 
-	tg, err := telegram.New(apiKeyTelegram, r)
+	tg, err := telegram.New(apiKeyTelegram, telegramUserIDInt, r)
 	if err != nil {
 		fmt.Println("failed to create telegram client: ", err.Error())
 		os.Exit(1)
