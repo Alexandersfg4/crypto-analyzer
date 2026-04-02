@@ -40,32 +40,27 @@ func main() {
 
 	apiKeyCoinstats, ok := os.LookupEnv(envCoinstatsAPIKey)
 	if !ok {
-		fmt.Println("env COINSTATS_API_KEY not found")
-		os.Exit(1)
+		log.Fatal("env COINSTATS_API_KEY not found")
 	}
 
 	apiKeyCoinmarketcap, ok := os.LookupEnv(envCoinmarketcapAPIKey)
 	if !ok {
-		fmt.Println("env API_KEY_COINMARKETCAP not found")
-		os.Exit(1)
+		log.Fatal("env API_KEY_COINMARKETCAP not found")
 	}
 
 	apiKeyTelegram, ok := os.LookupEnv(envTelegramToken)
 	if !ok {
-		fmt.Println("env TELEGRAM_API_TOKEN not found")
-		os.Exit(1)
+		log.Fatal("env TELEGRAM_API_TOKEN not found")
 	}
 
 	telegramUserID, ok := os.LookupEnv(envTelegramUserID)
 	if !ok {
-		fmt.Println("env TELEGRAM_USER_ID not found")
-		os.Exit(1)
+		log.Fatal("env TELEGRAM_USER_ID not found")
 	}
 
 	telegramUserIDInt, err := strconv.ParseInt(telegramUserID, 10, 64)
 	if err != nil {
-		fmt.Println("failed to parse TELEGRAM_USER_ID: ", err.Error())
-		os.Exit(1)
+		log.Fatal("failed to parse TELEGRAM_USER_ID: ", err.Error())
 	}
 
 	ctx := context.Background()
