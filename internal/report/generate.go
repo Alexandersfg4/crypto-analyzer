@@ -15,7 +15,7 @@ const (
 	limitCoins  = 100
 )
 
-func (r *Report) Generate(ctx context.Context, tokens []string, protocols []string) (Data, error) {
+func (r *Report) Generate(ctx context.Context) (Data, error) {
 	data, err := r.getData(ctx)
 	if err != nil {
 		return Data{}, fmt.Errorf("error getting data: %w", err)

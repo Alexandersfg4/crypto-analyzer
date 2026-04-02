@@ -8,26 +8,31 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	log "github.com/sirupsen/logrus"
 )
 
 func (c *Client) handleTokens(ctx context.Context, b *bot.Bot, update *models.Update) {
-	var err error
+	chatID := update.Message.Chat.ID
 	text := bot.EscapeMarkdown(update.Message.Text)
-	c.tokens, err = getItemsFromText(text)
+	tokens, err := getItemsFromText(text)
 	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      err.Error(),
-			ParseMode: models.ParseModeMarkdown,
-		})
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("failed to get tokens from text")
+		c.sendMessage(ctx, chatID, "failed to get tokens from text: "+err.Error())
 		return
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Tokens updated successfully: %s", strings.Join(c.tokens, ", ")),
-		ParseMode: models.ParseModeMarkdown,
-	})
+	config, err := c.configStorage.SaveTokens(tokens)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("failed to save tokens")
+		c.sendMessage(ctx, chatID, "failed to save tokens: "+err.Error())
+		return
+	}
+
+	c.sendMessage(ctx, chatID, fmt.Sprintf("Tokens updated successfully: %s", strings.Join(config.Tokens, ", ")))
 }
 
 func getItemsFromText(text string) ([]string, error) {

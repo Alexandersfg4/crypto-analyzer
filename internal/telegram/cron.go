@@ -33,6 +33,7 @@ func (c *Client) handleCron(ctx context.Context, b *bot.Bot, update *models.Upda
 	go c.reportCron.Run(func() {
 		c.sendReport(ctx, update.Message.Chat.ID)
 	})
+
 	log.WithFields(log.Fields{
 		"chatID": update.Message.Chat.ID,
 	}).Info("cron set successfully")

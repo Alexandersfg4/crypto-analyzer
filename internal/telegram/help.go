@@ -3,19 +3,20 @@ package telegram
 import (
 	"context"
 
+	_ "embed"
+
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 )
 
-const defaultMessage = `/report - generate crypto report
-/tokens ETH,USDT - set observed tokens
-/protocols AAVE,UNISWAP - set observed DEX protocols`
+//go:embed data/help.txt
+var helpMessage string
 
-func handleDefault(ctx context.Context, b *bot.Bot, update *models.Update) {
+func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update != nil && update.Message != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    update.Message.Chat.ID,
-			Text:      defaultMessage,
+			Text:      helpMessage,
 			ParseMode: models.ParseModeMarkdown,
 		})
 	}

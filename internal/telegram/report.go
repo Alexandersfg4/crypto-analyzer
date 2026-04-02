@@ -3,7 +3,6 @@ package telegram
 import (
 	"bytes"
 	"context"
-	"fmt"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/formatter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
@@ -19,14 +18,25 @@ func (c *Client) handleReport(ctx context.Context, b *bot.Bot, update *models.Up
 }
 
 func (c *Client) sendReport(ctx context.Context, chatID int64) {
-	var (
-		err  error
-		data report.Data
-	)
-	if len(c.protocols) == 0 || len(c.tokens) == 0 {
-		err = fmt.Errorf("no tokens or protocols provided")
-	} else {
-		data, err = c.r.Generate(ctx, c.tokens, c.protocols)
+	var data report.Data
+	config, err := c.configStorage.Read()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("handle report with error")
+		c.sendMessage(ctx, chatID, "got err while reading config: "+err.Error())
+		return
+	}
+	err = config.Validate()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("handle report with error")
+		c.sendMessage(ctx, chatID, "got err while config validation: "+err.Error())
+		return
+	}
+	if err == nil {
+		data, err = c.r.Generate(ctx)
 	}
 
 	if err != nil {
@@ -43,7 +53,7 @@ func (c *Client) sendReport(ctx context.Context, chatID int64) {
 	c.sendMessage(ctx, chatID, cap.String())
 
 	tokens := &bytes.Buffer{}
-	formatter.Coins(tokens, data.ListingsLatest, c.tokens)
+	formatter.Coins(tokens, data.ListingsLatest, config.Tokens)
 	c.sendMessage(ctx, chatID, tokens.String())
 
 	news := &bytes.Buffer{}
@@ -51,7 +61,7 @@ func (c *Client) sendReport(ctx context.Context, chatID int64) {
 	c.sendMessage(ctx, chatID, news.String())
 
 	protocols := &bytes.Buffer{}
-	formatter.Protocols(protocols, data.Protocols, c.protocols)
+	formatter.Protocols(protocols, data.Protocols, config.Protocols)
 	c.sendMessage(ctx, chatID, protocols.String())
 }
 
