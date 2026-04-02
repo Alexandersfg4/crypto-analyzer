@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/coinmarketcap"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/coinstats"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/defillama"
@@ -18,6 +21,17 @@ const (
 	envCoinmarketcapAPIKey = "API_KEY_COINMARKETCAP"
 	envTelegramToken       = "TELEGRAM_API_TOKEN"
 )
+
+func init() {
+	log.SetFormatter(&logrus.TextFormatter{
+		DisableColors: false,
+		FullTimestamp: true,
+	})
+
+	log.SetOutput(os.Stdout)
+
+	log.SetLevel(log.InfoLevel)
+}
 
 func main() {
 	flag.Parse()
