@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,13 +11,30 @@ import (
 )
 
 func (c *Client) handleTokens(ctx context.Context, b *bot.Bot, update *models.Update) {
+	var err error
 	text := bot.EscapeMarkdown(update.Message.Text)
-	tokens := strings.Split(text, ",")
-	c.tokens = tokens
+	c.tokens, err = getItemsFromText(text)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			Text:      err.Error(),
+			ParseMode: models.ParseModeMarkdown,
+		})
+		return
+	}
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      fmt.Sprintf("Tokens updated successfully: %s", text),
 		ParseMode: models.ParseModeMarkdown,
 	})
+}
+
+func getItemsFromText(text string) ([]string, error) {
+	msgs := strings.Split(text, " ")
+	if len(msgs) < 2 {
+		return nil, errors.New("invalid input")
+	}
+
+	return strings.Split(msgs[1], ","), nil
 }

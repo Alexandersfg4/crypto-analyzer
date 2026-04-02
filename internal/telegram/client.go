@@ -19,7 +19,7 @@ type Client struct {
 
 func New(apiToken string, r *report.Report) (*Client, error) {
 	opts := []bot.Option{
-		// bot.WithDefaultHandler(handleDefault),
+		bot.WithDefaultHandler(handleDefault),
 	}
 
 	b, err := bot.New(apiToken, opts...)
@@ -32,9 +32,11 @@ func New(apiToken string, r *report.Report) (*Client, error) {
 		r: r,
 	}
 
+	b.RegisterHandler(bot.HandlerTypeMessageText, "help", bot.MatchTypeCommand, handleDefault)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "report", bot.MatchTypeCommand, c.handleReport)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "tokens", bot.MatchTypeCommandStartOnly, c.handleTokens)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "protocols", bot.MatchTypeCommandStartOnly, c.handleProtocols)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommandStartOnly, c.handleConfig)
 
 	return c, nil
 }

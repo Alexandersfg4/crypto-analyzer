@@ -25,6 +25,7 @@ func (c *Client) handleReport(ctx context.Context, b *bot.Bot, update *models.Up
 			Text:      "got err while generating report: " + err.Error(),
 			ParseMode: models.ParseModeMarkdown,
 		})
+		return
 	}
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
