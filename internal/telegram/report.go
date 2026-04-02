@@ -58,7 +58,7 @@ func (c *Client) sendReport(ctx context.Context, chatID int64) {
 func (c *Client) sendMessage(ctx context.Context, chatID int64, text string) error {
 	_, err := c.b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chatID,
-		Text:      text,
+		Text:      processText(text),
 		ParseMode: models.ParseModeMarkdown,
 	})
 	if err != nil {
