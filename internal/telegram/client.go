@@ -3,7 +3,6 @@ package telegram
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
 	"github.com/go-telegram/bot"
@@ -23,7 +22,7 @@ func New(apiToken string, r *report.Report) (*Client, error) {
 		bot.WithDefaultHandler(handleDefault),
 	}
 
-	b, err := bot.New(os.Getenv("EXAMPLE_TELEGRAM_BOT_TOKEN"), opts...)
+	b, err := bot.New(apiToken, opts...)
 	if nil != err {
 		return nil, fmt.Errorf("failed init new bot: %w", err)
 	}
