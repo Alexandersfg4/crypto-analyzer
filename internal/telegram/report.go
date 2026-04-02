@@ -5,37 +5,67 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Alexandersfg4/crypto-analyzer/internal/formatter"
+	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	log "github.com/sirupsen/logrus"
 )
 
+const maxMessageLength = 4096
+
 func (c *Client) handleReport(ctx context.Context, b *bot.Bot, update *models.Update) {
+	c.sendReport(ctx, update.Message.Chat.ID)
+}
+
+func (c *Client) sendReport(ctx context.Context, chatID int64) {
 	var (
 		err  error
-		buff *bytes.Buffer
+		data report.Data
 	)
 	if len(c.protocols) == 0 || len(c.tokens) == 0 {
 		err = fmt.Errorf("no tokens or protocols provided")
 	} else {
-		buff, err = c.r.Generate(ctx, c.tokens, c.protocols)
-		log.WithFields(log.Fields{
-			"buff": buff.String(),
-			"err":  err,
-		}).Info("report generated")
-	}
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      "got err while generating report: " + err.Error(),
-			ParseMode: models.ParseModeMarkdown,
-		})
-		return
+		data, err = c.r.Generate(ctx, c.tokens, c.protocols)
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      buff.String(),
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("handle report with error")
+		c.sendMessage(ctx, chatID, "got err while generating report: "+err.Error())
+		return
+	}
+	capAndTokens := &bytes.Buffer{}
+	formatter.MarketCap(capAndTokens, data.MarketCap)
+	formatter.FearAndGreed(capAndTokens, data.FeatAndGreed)
+	formatter.Coins(capAndTokens, data.ListingsLatest, c.tokens)
+	c.sendMessage(ctx, chatID, capAndTokens.String())
+
+	news := &bytes.Buffer{}
+	formatter.News(news, data.News)
+	c.sendMessage(ctx, chatID, news.String())
+
+	protocols := &bytes.Buffer{}
+	formatter.Protocols(protocols, data.Protocols, c.protocols)
+	c.sendMessage(ctx, chatID, protocols.String())
+}
+
+func (c *Client) sendMessage(ctx context.Context, chatID int64, text string) error {
+	_, err := c.b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    chatID,
+		Text:      text,
 		ParseMode: models.ParseModeMarkdown,
 	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Error("send messge with err")
+		c.b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatID,
+			Text:   text,
+		})
+	}
+
+	return nil
 }

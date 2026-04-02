@@ -1,13 +1,11 @@
 package report
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/Alexandersfg4/crypto-analyzer/internal/formatter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
@@ -17,25 +15,18 @@ const (
 	limitCoins  = 100
 )
 
-func (r *Report) Generate(ctx context.Context, tokens []string, protocols []string) (*bytes.Buffer, error) {
+func (r *Report) Generate(ctx context.Context, tokens []string, protocols []string) (Data, error) {
 	data, err := r.getData(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error getting data: %w", err)
+		return Data{}, fmt.Errorf("error getting data: %w", err)
 	}
 
-	output := &bytes.Buffer{}
-	formatter.MarketCap(output, data.marketCap)
-	formatter.FearAndGreed(output, data.fearAndGreed)
-	formatter.Coins(output, data.listingsLatest, tokens)
-	formatter.News(output, data.news)
-	formatter.Protocols(output, data.protocols, protocols)
-
-	return output, nil
+	return data, nil
 }
 
-func (r *Report) getData(ctx context.Context) (data, error) {
+func (r *Report) getData(ctx context.Context) (Data, error) {
 	var (
-		result                     data
+		result                     Data
 		wg                         sync.WaitGroup
 		mu                         sync.Mutex
 		newsMap                    = make(map[string]models.News)
@@ -79,7 +70,7 @@ func (r *Report) getData(ctx context.Context) (data, error) {
 				return
 			}
 			mu.Lock()
-			result.fearAndGreed = gotFearAndGreed
+			result.FeatAndGreed = gotFearAndGreed
 			mu.Unlock()
 		},
 		func() {
@@ -89,7 +80,7 @@ func (r *Report) getData(ctx context.Context) (data, error) {
 				return
 			}
 			mu.Lock()
-			result.marketCap = gotMarketCap
+			result.MarketCap = gotMarketCap
 			mu.Unlock()
 		},
 		func() {
@@ -99,13 +90,13 @@ func (r *Report) getData(ctx context.Context) (data, error) {
 				return
 			}
 			mu.Lock()
-			result.protocols = gotProtocols
+			result.Protocols = gotProtocols
 			mu.Unlock()
 		},
 		func() {
 			for data := range listingsLatestDataCh {
 				mu.Lock()
-				result.listingsLatest = append(result.listingsLatest, data...)
+				result.ListingsLatest = append(result.ListingsLatest, data...)
 				mu.Unlock()
 			}
 		},
@@ -157,15 +148,7 @@ func (r *Report) getData(ctx context.Context) (data, error) {
 	for _, v := range newsMap {
 		newsResult = append(newsResult, v)
 	}
-	result.news = newsResult
+	result.News = newsResult
 
 	return result, nil
-}
-
-type data struct {
-	news           models.GetNewsResponse
-	fearAndGreed   models.FearAndGreed
-	marketCap      models.MarketCap
-	listingsLatest []models.ListingsLatestData
-	protocols      models.GetProtocolsResponse
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Alexandersfg4/crypto-analyzer/internal/cron"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
 	"github.com/go-telegram/bot"
 )
@@ -11,10 +12,11 @@ import (
 // Send any text message to the bot after the bot has been started
 
 type Client struct {
-	b         *bot.Bot
-	r         *report.Report
-	tokens    []string
-	protocols []string
+	b          *bot.Bot
+	r          *report.Report
+	tokens     []string
+	protocols  []string
+	reportCron *cron.Cron
 }
 
 func New(apiToken string, r *report.Report) (*Client, error) {
@@ -37,6 +39,7 @@ func New(apiToken string, r *report.Report) (*Client, error) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "tokens", bot.MatchTypeCommandStartOnly, c.handleTokens)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "protocols", bot.MatchTypeCommandStartOnly, c.handleProtocols)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommandStartOnly, c.handleConfig)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "cron", bot.MatchTypeCommandStartOnly, c.handleCron)
 
 	return c, nil
 }
