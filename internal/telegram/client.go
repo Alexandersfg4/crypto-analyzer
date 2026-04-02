@@ -19,7 +19,7 @@ type Client struct {
 
 func New(apiToken string, r *report.Report) (*Client, error) {
 	opts := []bot.Option{
-		bot.WithDefaultHandler(handleDefault),
+		// bot.WithDefaultHandler(handleDefault),
 	}
 
 	b, err := bot.New(apiToken, opts...)
