@@ -1,0 +1,7 @@
+The next options available:
+`/report` - generate crypto report
+`/tokens ETH,USDT`  - set observed tokens
+`/protocols AAVE,UNISWAP`  - set observed DEX protocols
+`/report` - generate crypto report
+`/config` - show current configuration
+`/cron 12:15` - set cron execution time every day UTC
