@@ -19,6 +19,7 @@ type Client struct {
 
 func New(apiToken string, userID int64, r *report.Report) (*Client, error) {
 	opts := []bot.Option{
+		bot.WithDefaultHandler(handleHelp),
 		bot.WithMiddlewares(auth(userID)),
 	}
 
@@ -39,7 +40,6 @@ func New(apiToken string, userID int64, r *report.Report) (*Client, error) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "protocols", bot.MatchTypeCommandStartOnly, c.handleProtocols)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommandStartOnly, c.handleConfig)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "cron", bot.MatchTypeCommandStartOnly, c.handleCron)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "debug", bot.MatchTypeCommandStartOnly, c.handleDebug)
 
 	return c, nil
 }

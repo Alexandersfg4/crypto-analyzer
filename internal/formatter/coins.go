@@ -22,7 +22,7 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 		return 0
 	})
 
-	fmt.Fprintln(w, "*Listed tokens*")
+	fmt.Fprintln(w, "Observed tokens")
 	if len(tokens) == 0 {
 		for _, c := range gotCoins {
 			showTokenInfo(w, c)
@@ -57,13 +57,13 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 	})
 
 	fmt.Println()
-	fmt.Fprintln(w, "📈 *Gainers by 90d change*")
+	fmt.Fprintln(w, "📈 Gainers by 90d change")
 	for _, c := range coindByChanges90d[:5] {
 		showTokenInfo(w, c)
 	}
 
 	fmt.Println()
-	fmt.Fprintln(w, "📉 *Losers by 90d change*")
+	fmt.Fprintln(w, "📉 Losers by 90d change")
 	for _, c := range coindByChanges90d[len(coindByChanges90d)-5:] {
 		showTokenInfo(w, c)
 	}
