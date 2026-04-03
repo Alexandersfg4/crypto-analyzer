@@ -4,4 +4,4 @@ The next options available:
 `/protocols AAVE,UNISWAP`  - set observed DEX protocols
 `/report` - generate crypto report
 `/config` - show current configuration
-`/cron 12h` - set cron schedule
+`/cron 12:15` - set cron execution time every day UTC

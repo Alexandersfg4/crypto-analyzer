@@ -37,7 +37,7 @@ func (c *Client) handleCron(ctx context.Context, b *bot.Bot, update *models.Upda
 	} else {
 		c.reportCron.Reset(t)
 	}
-	c.configStorage.SaveCronNextExecutionTime(t)
+	c.configStorage.SaveCronNextExecutionTime(c.reportCron.ExecutionTime())
 
 	log.WithFields(log.Fields{
 		"chatID": update.Message.Chat.ID,

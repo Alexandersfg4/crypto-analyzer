@@ -14,12 +14,12 @@ func (c *Client) handleConfig(ctx context.Context, b *bot.Bot, update *models.Up
 	chatID := update.Message.Chat.ID
 	config, err := c.configStorage.Read()
 	if err != nil {
-		c.sendMessage(ctx, chatID, "failed to read config"+err.Error())
+		c.sendMessage(ctx, chatID, fmt.Sprintf("failed to read config: %s", err.Error()))
 		return
 	}
 	err = config.Validate()
 	if err != nil {
-		c.sendMessage(ctx, chatID, "failed to validate config"+err.Error())
+		c.sendMessage(ctx, chatID, fmt.Sprintf("failed to validate config: %s", err.Error()))
 		return
 	}
 
