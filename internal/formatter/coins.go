@@ -67,8 +67,6 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 	for _, c := range coindByChanges90d[len(coindByChanges90d)-5:] {
 		showTokenInfo(w, c)
 	}
-
-	fmt.Fprintln(w)
 }
 
 func showTokenInfo(w io.Writer, c models.ListingsLatestData) {

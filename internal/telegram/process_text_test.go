@@ -23,8 +23,8 @@ func Test_processText(t *testing.T) {
 		},
 		{
 			name:     "inline URL",
-			input:    "[inline URL](http://www.example.com/)",
-			expected: "[inline URL](http://www.example.com/)",
+			input:    "[inline URL](http://www.example.com/)\n",
+			expected: "[inline URL](http://www.example.com/)\n",
 		},
 		{
 			name:     "dot inside text of URL",
