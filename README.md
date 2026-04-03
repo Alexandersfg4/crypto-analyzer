@@ -2,7 +2,7 @@
 
 Telegram bot for fetching real-time cryptocurrency market data, including global capitalization, Fear and Greed Index, token prices, DeFi protocols TVL, and the latest industry news.
 
-![Report Example](./assets/report_example.png){width=300}
+<img src="./assets/report_example.png" alt="drawing" width="200"/>
 
 ## Prerequisites
 
