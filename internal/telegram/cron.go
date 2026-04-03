@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -12,43 +13,48 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const cronTimeLayout = "15:04"
+
 const reportInterval = time.Hour * 24
 
 func (c *Client) handleCron(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var err error
+	chatID := update.Message.Chat.ID
 	text := bot.EscapeMarkdown(update.Message.Text)
 
-	duration, err := getDurationFromText(text)
+	t, err := getTimeHourAndMinutesFromText(text)
 	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      err.Error(),
-			ParseMode: models.ParseModeMarkdown,
-		})
+		c.sendMessage(ctx, chatID, fmt.Sprintf("invalid input: %s, expected format: %s", err.Error(), cronTimeLayout))
 		return
 	}
 
-	c.reportCron = cron.New(duration)
+	if c.reportCron == nil {
+		c.reportCron = cron.New(t)
 
-	go c.reportCron.Run(func() {
-		c.sendReport(ctx, update.Message.Chat.ID)
-	})
+		go c.reportCron.Run(ctx, func() {
+			c.sendReport(ctx, update.Message.Chat.ID)
+		})
+	} else {
+		c.reportCron.Reset(t)
+	}
+	c.configStorage.SaveCronNextExecutionTime(t)
 
 	log.WithFields(log.Fields{
 		"chatID": update.Message.Chat.ID,
 	}).Info("cron set successfully")
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      "cron set successfully",
-		ParseMode: models.ParseModeMarkdown,
-	})
+	c.sendMessage(ctx, chatID, "cron set successfully")
 }
 
-func getDurationFromText(text string) (time.Duration, error) {
+func getTimeHourAndMinutesFromText(text string) (time.Time, error) {
 	msgs := strings.Split(text, " ")
 	if len(msgs) < 2 {
-		return 0, errors.New("invalid input")
+		return time.Time{}, errors.New("invalid input")
 	}
 
-	return time.ParseDuration(msgs[1])
+	t, err := time.Parse(cronTimeLayout, msgs[1])
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to parse time: %w", err)
+	}
+
+	return t, nil
 }

@@ -94,7 +94,6 @@ var verbatimEntities = map[string]bool{
 	"**>": true,
 	">":   true,
 	"!":   true,
-	"[":   true,
 }
 
 // mdV2SpecialChars are all characters that must be escaped in Telegram MarkdownV2

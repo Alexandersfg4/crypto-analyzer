@@ -2,11 +2,13 @@ package models
 
 import (
 	"errors"
+	"time"
 )
 
 type Config struct {
-	Tokens    []string `json:"tokens"`
-	Protocols []string `json:"protocols"`
+	Tokens                []string  `json:"tokens"`
+	Protocols             []string  `json:"protocols"`
+	CronNextExecutionTime time.Time `json:"cron_next_execution_time"`
 }
 
 func (c *Config) Validate() error {

@@ -4,37 +4,29 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 )
 
 func (c *Client) handleConfig(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatID := update.Message.Chat.ID
 	config, err := c.configStorage.Read()
 	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      "failed to read config" + err.Error(),
-			ParseMode: models.ParseModeMarkdown,
-		})
+		c.sendMessage(ctx, chatID, "failed to read config"+err.Error())
 		return
 	}
 	err = config.Validate()
 	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      "failed to validate config" + err.Error(),
-			ParseMode: models.ParseModeMarkdown,
-		})
+		c.sendMessage(ctx, chatID, "failed to validate config"+err.Error())
 		return
 	}
 
-	text := fmt.Sprintf("*Config*\nTokens: %s\nProtocols: %s",
-		strings.Join(config.Tokens, ", "), strings.Join(config.Protocols, ", "))
+	text := fmt.Sprintf("*Config*\nTokens: %s\nProtocols: %s\nCron Next Execution Time: %s",
+		strings.Join(config.Tokens, ", "),
+		strings.Join(config.Protocols, ", "),
+		config.CronNextExecutionTime.Format(time.RFC3339))
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      text,
-		ParseMode: models.ParseModeMarkdown,
-	})
+	c.sendMessage(ctx, chatID, text)
 }

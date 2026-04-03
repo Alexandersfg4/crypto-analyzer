@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"time"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
@@ -50,6 +51,25 @@ func (c *Config) SaveProtocols(protocols []string) (models.Config, error) {
 		return models.Config{}, err
 	}
 	config.Protocols = protocols
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		return models.Config{}, err
+	}
+	err = os.WriteFile(c.fileName, data, 0644)
+	if err != nil {
+		return models.Config{}, err
+	}
+
+	return *config, nil
+}
+
+func (c *Config) SaveCronNextExecutionTime(t time.Time) (models.Config, error) {
+	config, err := c.Read()
+	if err != nil {
+		return models.Config{}, err
+	}
+	config.CronNextExecutionTime = t
 
 	data, err := json.Marshal(config)
 	if err != nil {
