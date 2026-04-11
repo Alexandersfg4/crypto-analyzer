@@ -31,6 +31,7 @@ Focus on:
 - Momentum
 - Volatility
 - Risk management
+- Output should be less than 4096 characters
 
 Return output in telegram markdown v2 format which could be:
 `

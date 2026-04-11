@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	timeoutWork = time.Second * 30
+	timeoutWork = time.Minute * 3
 	limitNews   = 20
 	limitCoins  = 100
 )

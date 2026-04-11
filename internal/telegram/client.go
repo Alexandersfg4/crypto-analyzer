@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/cron"
-	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/storage"
+
+	internal_models "github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -73,7 +75,27 @@ func (c *Client) Start(ctx context.Context) {
 	c.b.Start(ctx)
 }
 
-func (c *Client) updateConfig(ctx context.Context, chatID int64, upater func(*models.Config)) error {
+func (c *Client) sendMessage(ctx context.Context, chatID int64, text string) error {
+	_, err := c.b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    chatID,
+		Text:      processText(text),
+		ParseMode: models.ParseModeMarkdown,
+	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Error("send messge with err ", text)
+		c.b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    chatID,
+			Text:      text,
+			ParseMode: models.ParseModeMarkdownV1,
+		})
+	}
+
+	return nil
+}
+
+func (c *Client) updateConfig(ctx context.Context, chatID int64, upater func(*internal_models.Config)) error {
 	cfg, err := c.configStorage.Read()
 	if err != nil {
 		log.WithFields(log.Fields{

@@ -46,23 +46,3 @@ func (c *Client) sendReport(ctx context.Context, chatID int64) {
 	c.sendMessage(ctx, chatID, data.Tokens.GainersAndLoosers)
 	c.sendMessage(ctx, chatID, data.AISummary)
 }
-
-func (c *Client) sendMessage(ctx context.Context, chatID int64, text string) error {
-	_, err := c.b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    chatID,
-		Text:      processText(text),
-		ParseMode: models.ParseModeMarkdown,
-	})
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("send messge with err ", text)
-		c.b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    chatID,
-			Text:      text,
-			ParseMode: models.ParseModeMarkdownV1,
-		})
-	}
-
-	return nil
-}
