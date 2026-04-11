@@ -24,5 +24,6 @@ func New(
 		coinmarketcapSrv: coinmarketcapSrv,
 		coinstatsSrv:     coinstatsSrv,
 		defillamaSrv:     defillamaSrv,
+		openRouterSrv:    openRouterSrv,
 	}
 }

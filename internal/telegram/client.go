@@ -25,7 +25,7 @@ type Client struct {
 func New(apiToken string, userID int64, r *report.Report) (*Client, error) {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handleHelp),
-		bot.WithMiddlewares(auth(userID)),
+		bot.WithMiddlewares(auth(userID), recoverFromPanic()),
 	}
 
 	b, err := bot.New(apiToken, opts...)

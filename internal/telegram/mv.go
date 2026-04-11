@@ -23,3 +23,17 @@ func auth(userID int64) func(next bot.HandlerFunc) bot.HandlerFunc {
 		}
 	}
 }
+
+func recoverFromPanic() func(next bot.HandlerFunc) bot.HandlerFunc {
+	return func(next bot.HandlerFunc) bot.HandlerFunc {
+		return func(ctx context.Context, bot *bot.Bot, update *models.Update) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Error("recovered from panic: ", r)
+				}
+			}()
+
+			next(ctx, bot, update)
+		}
+	}
+}

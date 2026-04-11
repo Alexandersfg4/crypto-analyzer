@@ -26,7 +26,7 @@ func NewConfig(fileName string) *Config {
 }
 
 func (c *Config) Save(newConfig *models.Config) error {
-	data, err := json.Marshal(newConfig)
+	data, err := json.MarshalIndent(newConfig, "", "  ")
 	if err != nil {
 		return err
 	}

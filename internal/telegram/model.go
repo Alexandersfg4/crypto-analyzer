@@ -14,7 +14,7 @@ import (
 
 func (c *Client) handleModel(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatID := update.Message.Chat.ID
-	text := bot.EscapeMarkdown(update.Message.Text)
+	text := update.Message.Text
 	model, err := getOptionFromText(text)
 	if err != nil {
 		log.WithFields(log.Fields{
