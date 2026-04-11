@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/cron"
+	internal_models "github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	log "github.com/sirupsen/logrus"
@@ -33,28 +34,19 @@ func (c *Client) handleCron(ctx context.Context, b *bot.Bot, update *models.Upda
 
 		go c.reportCron.Run(ctx, func() {
 			c.sendReport(ctx, update.Message.Chat.ID)
+			c.updateConfig(ctx, chatID, func(cfg *internal_models.Config) {
+				cfg.CronNextExecutionTime = c.reportCron.ExecutionTime()
+			})
 		})
 	} else {
 		c.reportCron.Reset(t)
 	}
 
-	cfg, err := c.configStorage.Read()
+	err = c.updateConfig(ctx, chatID, func(cfg *internal_models.Config) {
+		cfg.CronNextExecutionTime = c.reportCron.ExecutionTime()
+		cfg.ChatID = chatID
+	})
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("read config with error")
-		c.sendMessage(ctx, chatID, "read config with error: "+err.Error())
-		return
-	}
-	cfg.CronNextExecutionTime = c.reportCron.ExecutionTime()
-	cfg.ChatID = chatID
-
-	err = c.configStorage.Save(cfg)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("save config with error")
-		c.sendMessage(ctx, chatID, "save config with error: "+err.Error())
 		return
 	}
 

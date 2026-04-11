@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	internal_models "github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	log "github.com/sirupsen/logrus"
@@ -23,30 +24,14 @@ func (c *Client) handleModel(ctx context.Context, b *bot.Bot, update *models.Upd
 		return
 	}
 
-	cfg, err := c.configStorage.Read()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("read config with error")
-		c.sendMessage(ctx, chatID, "read config with error: "+err.Error())
-		return
-	}
-	cfg.OpenrouterModel = model
-
-	err = c.configStorage.Save(cfg)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("save config with error")
-		c.sendMessage(ctx, chatID, "save config with error: "+err.Error())
-		return
-	}
-
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Model updated successfully: %s", cfg.OpenrouterModel),
-		ParseMode: models.ParseModeMarkdown,
+	err = c.updateConfig(ctx, chatID, func(cfg *internal_models.Config) {
+		cfg.OpenrouterModel = model
 	})
+	if err != nil {
+		return
+	}
+
+	c.sendMessage(ctx, chatID, fmt.Sprintf("Model updated successfully: %s", model))
 }
 
 func getOptionFromText(text string) (string, error) {

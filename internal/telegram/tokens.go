@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	internal_models "github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	log "github.com/sirupsen/logrus"
@@ -23,26 +24,14 @@ func (c *Client) handleTokens(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 
-	cfg, err := c.configStorage.Read()
+	err = c.updateConfig(ctx, chatID, func(cfg *internal_models.Config) {
+		cfg.Tokens = tokens
+	})
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("read config with error")
-		c.sendMessage(ctx, chatID, "read config with error: "+err.Error())
-		return
-	}
-	cfg.Tokens = tokens
-
-	err = c.configStorage.Save(cfg)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("save config with error")
-		c.sendMessage(ctx, chatID, "save config with error: "+err.Error())
 		return
 	}
 
-	c.sendMessage(ctx, chatID, fmt.Sprintf("Tokens updated successfully: %s", strings.Join(cfg.Tokens, ", ")))
+	c.sendMessage(ctx, chatID, fmt.Sprintf("Tokens updated successfully: %s", strings.Join(tokens, ", ")))
 }
 
 func getItemsFromText(text string) ([]string, error) {

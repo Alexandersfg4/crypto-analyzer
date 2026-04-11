@@ -3,11 +3,14 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/cron"
+	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/storage"
 	"github.com/go-telegram/bot"
+	log "github.com/sirupsen/logrus"
 )
 
 type Client struct {
@@ -51,14 +54,45 @@ func (c *Client) Start(ctx context.Context) {
 		panic(err)
 	}
 
-	var cr *cron.Cron
 	if !cfg.CronNextExecutionTime.IsZero() && cfg.ChatID != 0 {
-		cr = cron.New(cfg.CronNextExecutionTime)
+
+		now := time.Now()
+		cr := cron.New(cfg.CronNextExecutionTime)
+
+		if cfg.CronNextExecutionTime.Before(now) {
+			cr.Reset(cfg.CronNextExecutionTime)
+		}
 
 		go cr.Run(ctx, func() {
 			c.sendReport(ctx, cfg.ChatID)
 		})
+
+		c.reportCron = cr
 	}
 
 	c.b.Start(ctx)
+}
+
+func (c *Client) updateConfig(ctx context.Context, chatID int64, upater func(*models.Config)) error {
+	cfg, err := c.configStorage.Read()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("read config with error")
+		c.sendMessage(ctx, chatID, "read config with error: "+err.Error())
+		return err
+	}
+
+	upater(cfg)
+
+	err = c.configStorage.Save(cfg)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("save config with error")
+		c.sendMessage(ctx, chatID, "save config with error: "+err.Error())
+		return err
+	}
+
+	return nil
 }
