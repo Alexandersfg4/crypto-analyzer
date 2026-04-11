@@ -35,7 +35,7 @@ Focus on:
 Return output in telegram markdown v2 format which could be:
 `
 
-//go:embed
+//go:embed format_options.txt
 var formatOptions string
 
 func (s *Service) Analyze(ctx context.Context, openrouterModel, req string) (string, error) {
