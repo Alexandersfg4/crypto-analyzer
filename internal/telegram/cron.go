@@ -37,7 +37,26 @@ func (c *Client) handleCron(ctx context.Context, b *bot.Bot, update *models.Upda
 	} else {
 		c.reportCron.Reset(t)
 	}
-	c.configStorage.SaveCronNextExecutionTime(c.reportCron.ExecutionTime())
+
+	cfg, err := c.configStorage.Read()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("read config with error")
+		c.sendMessage(ctx, chatID, "read config with error: "+err.Error())
+		return
+	}
+	cfg.CronNextExecutionTime = c.reportCron.ExecutionTime()
+	cfg.ChatID = chatID
+
+	err = c.configStorage.Save(cfg)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("save config with error")
+		c.sendMessage(ctx, chatID, "save config with error: "+err.Error())
+		return
+	}
 
 	log.WithFields(log.Fields{
 		"chatID": update.Message.Chat.ID,

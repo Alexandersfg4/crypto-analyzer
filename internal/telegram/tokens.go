@@ -23,16 +23,26 @@ func (c *Client) handleTokens(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 
-	config, err := c.configStorage.SaveTokens(tokens)
+	cfg, err := c.configStorage.Read()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
-		}).Info("failed to save tokens")
-		c.sendMessage(ctx, chatID, "failed to save tokens: "+err.Error())
+		}).Info("read config with error")
+		c.sendMessage(ctx, chatID, "read config with error: "+err.Error())
+		return
+	}
+	cfg.Tokens = tokens
+
+	err = c.configStorage.Save(cfg)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Info("save config with error")
+		c.sendMessage(ctx, chatID, "save config with error: "+err.Error())
 		return
 	}
 
-	c.sendMessage(ctx, chatID, fmt.Sprintf("Tokens updated successfully: %s", strings.Join(config.Tokens, ", ")))
+	c.sendMessage(ctx, chatID, fmt.Sprintf("Tokens updated successfully: %s", strings.Join(cfg.Tokens, ", ")))
 }
 
 func getItemsFromText(text string) ([]string, error) {

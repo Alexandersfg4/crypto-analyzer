@@ -3,9 +3,11 @@ package report
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/Alexandersfg4/crypto-analyzer/internal/formatter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
@@ -15,18 +17,21 @@ const (
 	limitCoins  = 100
 )
 
-func (r *Report) Generate(ctx context.Context) (Data, error) {
-	data, err := r.getData(ctx)
+func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report, error) {
+	data, err := r.getData(ctx, cfg)
 	if err != nil {
-		return Data{}, fmt.Errorf("error getting data: %w", err)
+		return models.Report{}, fmt.Errorf("error getting data: %w", err)
 	}
 
 	return data, nil
 }
 
-func (r *Report) getData(ctx context.Context) (Data, error) {
+func (r *Report) getData(ctx context.Context, cfg models.Config) (models.Report, error) {
 	var (
-		result                     Data
+		fearAndGreedData           models.FearAndGreed
+		marketCapData              models.MarketCap
+		listingsLatestData         = make([]models.ListingsLatestData, 0, limitCoins*2)
+		protocolsData              models.GetProtocolsResponse
 		wg                         sync.WaitGroup
 		mu                         sync.Mutex
 		newsMap                    = make(map[string]models.News)
@@ -70,7 +75,7 @@ func (r *Report) getData(ctx context.Context) (Data, error) {
 				return
 			}
 			mu.Lock()
-			result.FeatAndGreed = gotFearAndGreed
+			fearAndGreedData = gotFearAndGreed
 			mu.Unlock()
 		},
 		func() {
@@ -80,7 +85,7 @@ func (r *Report) getData(ctx context.Context) (Data, error) {
 				return
 			}
 			mu.Lock()
-			result.MarketCap = gotMarketCap
+			marketCapData = gotMarketCap
 			mu.Unlock()
 		},
 		func() {
@@ -90,13 +95,13 @@ func (r *Report) getData(ctx context.Context) (Data, error) {
 				return
 			}
 			mu.Lock()
-			result.Protocols = gotProtocols
+			protocolsData = gotProtocols
 			mu.Unlock()
 		},
 		func() {
 			for data := range listingsLatestDataCh {
 				mu.Lock()
-				result.ListingsLatest = append(result.ListingsLatest, data...)
+				listingsLatestData = append(listingsLatestData, data...)
 				mu.Unlock()
 			}
 		},
@@ -140,7 +145,7 @@ func (r *Report) getData(ctx context.Context) (Data, error) {
 
 	for e := range errCh {
 		if e != nil {
-			return result, e
+			return models.Report{}, e
 		}
 	}
 
@@ -148,7 +153,44 @@ func (r *Report) getData(ctx context.Context) (Data, error) {
 	for _, v := range newsMap {
 		newsResult = append(newsResult, v)
 	}
-	result.News = newsResult
 
-	return result, nil
+	cap := &strings.Builder{}
+	formatter.MarketCap(cap, marketCapData)
+	formatter.FearAndGreed(cap, fearAndGreedData)
+
+	tokensAll := &strings.Builder{}
+	formatter.CoinsAll(tokensAll, listingsLatestData)
+
+	tokensInPortfolio := &strings.Builder{}
+	formatter.CoinsInPortfolio(tokensInPortfolio, listingsLatestData, cfg.Tokens)
+
+	tokensGainersAndLosers := &strings.Builder{}
+	formatter.CoinsGainersAndLosers(tokensGainersAndLosers, listingsLatestData)
+
+	proto := &strings.Builder{}
+	formatter.Protocols(proto, protocolsData, cfg.Protocols)
+
+	news := &strings.Builder{}
+	formatter.News(news, newsResult)
+
+	analyzeResult, err := r.openRouterSrv.Analyze(ctx, cfg.OpenrouterModel,
+		strings.Join([]string{
+			cap.String(),
+			tokensInPortfolio.String(),
+			proto.String(),
+			news.String(),
+			tokensAll.String(),
+		}, "\n"))
+	if err != nil {
+		return models.Report{}, fmt.Errorf("error analyzing: %w", err)
+	}
+
+	return models.Report{
+		MarketCap: cap.String(),
+		Tokens: models.Tokens{
+			InPortfolio:       tokensInPortfolio.String(),
+			GainersAndLoosers: tokensGainersAndLosers.String(),
+		},
+		AISummary: analyzeResult,
+	}, nil
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/coinmarketcap"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/coinstats"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/defillama"
+	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/openrouter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/telegram"
 )
@@ -22,6 +23,7 @@ const (
 	envCoinmarketcapAPIKey = "API_KEY_COINMARKETCAP"
 	envTelegramToken       = "TELEGRAM_API_TOKEN"
 	envTelegramUserID      = "TELEGRAM_USER_ID"
+	envOpenRouterAPIKey    = "OPENROUTER_API_KEY"
 )
 
 func init() {
@@ -63,13 +65,19 @@ func main() {
 		log.Fatal("failed to parse TELEGRAM_USER_ID: ", err.Error())
 	}
 
+	openRouterAPIKey, ok := os.LookupEnv(envOpenRouterAPIKey)
+	if !ok {
+		log.Fatal("env OPENROUTER_API_KEY not found")
+	}
+
 	ctx := context.Background()
 
 	coinmarketcapSrv := coinmarketcap.NewService(apiKeyCoinmarketcap)
 	coinstatsSrv := coinstats.NewService(apiKeyCoinstats)
 	defillamaSrv := defillama.NewService()
+	openRouterSrv := openrouter.NewService(openRouterAPIKey)
 
-	r := report.New(coinmarketcapSrv, coinstatsSrv, defillamaSrv)
+	r := report.New(coinmarketcapSrv, coinstatsSrv, defillamaSrv, openRouterSrv)
 
 	tg, err := telegram.New(apiKeyTelegram, telegramUserIDInt, r)
 	if err != nil {

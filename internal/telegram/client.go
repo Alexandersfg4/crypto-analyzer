@@ -40,10 +40,25 @@ func New(apiToken string, userID int64, r *report.Report) (*Client, error) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "protocols", bot.MatchTypeCommandStartOnly, c.handleProtocols)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommandStartOnly, c.handleConfig)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "cron", bot.MatchTypeCommandStartOnly, c.handleCron)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "model", bot.MatchTypeCommandStartOnly, c.handleModel)
 
 	return c, nil
 }
 
 func (c *Client) Start(ctx context.Context) {
+	cfg, err := c.configStorage.Read()
+	if err != nil {
+		panic(err)
+	}
+
+	var cr *cron.Cron
+	if !cfg.CronNextExecutionTime.IsZero() && cfg.ChatID != 0 {
+		cr = cron.New(cfg.CronNextExecutionTime)
+
+		go cr.Run(ctx, func() {
+			c.sendReport(ctx, cfg.ChatID)
+		})
+	}
+
 	c.b.Start(ctx)
 }

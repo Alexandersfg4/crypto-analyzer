@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,15 +11,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *Client) handleProtocols(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (c *Client) handleModel(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatID := update.Message.Chat.ID
 	text := bot.EscapeMarkdown(update.Message.Text)
-	protocols, err := getItemsFromText(text)
+	model, err := getOptionFromText(text)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
-		}).Info("handle protocols with error")
-		c.sendMessage(ctx, chatID, "handle protocols with error: "+err.Error())
+		}).Info("handle model with error")
+		c.sendMessage(ctx, chatID, "handle model with error: "+err.Error())
 		return
 	}
 
@@ -30,7 +31,7 @@ func (c *Client) handleProtocols(ctx context.Context, b *bot.Bot, update *models
 		c.sendMessage(ctx, chatID, "read config with error: "+err.Error())
 		return
 	}
-	cfg.Protocols = protocols
+	cfg.OpenrouterModel = model
 
 	err = c.configStorage.Save(cfg)
 	if err != nil {
@@ -43,7 +44,16 @@ func (c *Client) handleProtocols(ctx context.Context, b *bot.Bot, update *models
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Protocols updated successfully: %s", strings.Join(cfg.Protocols, ", ")),
+		Text:      fmt.Sprintf("Model updated successfully: %s", cfg.OpenrouterModel),
 		ParseMode: models.ParseModeMarkdown,
 	})
+}
+
+func getOptionFromText(text string) (string, error) {
+	msgs := strings.Split(text, " ")
+	if len(msgs) < 2 {
+		return "", errors.New("invalid input")
+	}
+
+	return msgs[1], nil
 }
