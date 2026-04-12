@@ -8,11 +8,7 @@ import (
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
-type Config struct {
-	fileName string
-}
-
-func NewConfig(fileName string) *Config {
+func New(fileName string) *Config {
 	_, err := os.ReadFile(fileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -23,6 +19,10 @@ func NewConfig(fileName string) *Config {
 	}
 
 	return &Config{fileName: fileName}
+}
+
+type Config struct {
+	fileName string
 }
 
 func (c *Config) Save(newConfig *models.Config) error {

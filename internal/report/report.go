@@ -1,24 +1,35 @@
 package report
 
 import (
-	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/coinmarketcap"
-	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/coinstats"
-	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/defillama"
-	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/openrouter"
+	"context"
+
+	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
-type Report struct {
-	coinmarketcapSrv *coinmarketcap.Service
-	coinstatsSrv     *coinstats.Service
-	defillamaSrv     *defillama.Service
-	openRouterSrv    *openrouter.Service
+type CoinstatsProvider interface {
+	GetMarketCap(ctx context.Context) (models.MarketCap, error)
+	GetFearAndGreed(ctx context.Context) (models.FearAndGreed, error)
+	GetNewsByType(ctx context.Context, newsType models.NewsType, limit int) (models.GetNewsResponse, error)
+	GetCoins(ctx context.Context, limit int) (models.Coins, error)
+}
+
+type CoinmarketcapProvider interface {
+	GetListingsLatest(ctx context.Context, start int, limit int) (models.ListingsLatestResponse, error)
+}
+
+type DefillamaProvider interface {
+	GetProtocols(ctx context.Context) (models.GetProtocolsResponse, error)
+}
+
+type OpenRouterProvider interface {
+	Analyze(ctx context.Context, model, data string) (string, error)
 }
 
 func New(
-	coinmarketcapSrv *coinmarketcap.Service,
-	coinstatsSrv *coinstats.Service,
-	defillamaSrv *defillama.Service,
-	openRouterSrv *openrouter.Service,
+	coinmarketcapSrv CoinmarketcapProvider,
+	coinstatsSrv CoinstatsProvider,
+	defillamaSrv DefillamaProvider,
+	openRouterSrv OpenRouterProvider,
 ) *Report {
 	return &Report{
 		coinmarketcapSrv: coinmarketcapSrv,
@@ -26,4 +37,11 @@ func New(
 		defillamaSrv:     defillamaSrv,
 		openRouterSrv:    openRouterSrv,
 	}
+}
+
+type Report struct {
+	coinmarketcapSrv CoinmarketcapProvider
+	coinstatsSrv     CoinstatsProvider
+	defillamaSrv     DefillamaProvider
+	openRouterSrv    OpenRouterProvider
 }

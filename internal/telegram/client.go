@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/cron"
-	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
-	"github.com/Alexandersfg4/crypto-analyzer/internal/storage"
 
 	internal_models "github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/go-telegram/bot"
@@ -15,14 +13,23 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type Generator interface {
+	Generate(ctx context.Context, cfg internal_models.Config) (internal_models.Report, error)
+}
+
+type ConfigStorer interface {
+	Read() (*internal_models.Config, error)
+	Save(cfg *internal_models.Config) error
+}
+
 type Client struct {
 	b             *bot.Bot
-	r             *report.Report
-	configStorage *storage.Config
+	r             Generator
+	configStorage ConfigStorer
 	reportCron    *cron.Cron
 }
 
-func New(apiToken string, userID int64, r *report.Report) (*Client, error) {
+func New(apiToken string, userID int64, r Generator, store ConfigStorer) (*Client, error) {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handleHelp),
 		bot.WithMiddlewares(auth(userID), recoverFromPanic()),
@@ -36,7 +43,7 @@ func New(apiToken string, userID int64, r *report.Report) (*Client, error) {
 	c := &Client{
 		b:             b,
 		r:             r,
-		configStorage: storage.NewConfig("crypto-analyzer.json"),
+		configStorage: store,
 	}
 
 	b.RegisterHandler(bot.HandlerTypeMessageText, "help", bot.MatchTypeCommandStartOnly, handleHelp)

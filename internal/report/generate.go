@@ -9,6 +9,7 @@ import (
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/formatter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -18,136 +19,107 @@ const (
 )
 
 func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report, error) {
-	data, err := r.getData(ctx, cfg)
-	if err != nil {
-		return models.Report{}, fmt.Errorf("error getting data: %w", err)
-	}
-
-	return data, nil
-}
-
-func (r *Report) getData(ctx context.Context, cfg models.Config) (models.Report, error) {
-	var (
-		fearAndGreedData           models.FearAndGreed
-		marketCapData              models.MarketCap
-		listingsLatestData         = make([]models.ListingsLatestData, 0, limitCoins*2)
-		protocolsData              models.GetProtocolsResponse
-		wg                         sync.WaitGroup
-		mu                         sync.Mutex
-		newsMap                    = make(map[string]models.News)
-		errCh                      = make(chan error, 8)
-		listingsLatestDataCh       = make(chan []models.ListingsLatestData)
-		secondListingsLatestDoneCh = make(chan struct{})
-	)
-
 	ctx, cancel := context.WithTimeout(ctx, timeoutWork)
 	defer cancel()
 
-	jobs := []func(){
-		func() {
-			gotLatestNews, err := r.coinstatsSrv.GetNewsByType(ctx, models.NewsTypeLatest, limitNews)
-			if err != nil {
-				errCh <- fmt.Errorf("error fetching latest news: %w", err)
-				return
-			}
-			mu.Lock()
-			for _, n := range gotLatestNews {
-				newsMap[n.Title] = n
-			}
-			mu.Unlock()
-		},
-		func() {
-			gotTrendingNews, err := r.coinstatsSrv.GetNewsByType(ctx, models.NewsTypeTrending, limitNews)
-			if err != nil {
-				errCh <- fmt.Errorf("error fetching trending news: %w", err)
-				return
-			}
-			mu.Lock()
-			for _, n := range gotTrendingNews {
-				newsMap[n.Title] = n
-			}
-			mu.Unlock()
-		},
-		func() {
-			gotFearAndGreed, err := r.coinstatsSrv.GetFearAndGreed(ctx)
-			if err != nil {
-				errCh <- fmt.Errorf("error getting fear and greed: %w", err)
-				return
-			}
-			mu.Lock()
-			fearAndGreedData = gotFearAndGreed
-			mu.Unlock()
-		},
-		func() {
-			gotMarketCap, err := r.coinstatsSrv.GetMarketCap(ctx)
-			if err != nil {
-				errCh <- fmt.Errorf("error getting market cap: %w", err)
-				return
-			}
-			mu.Lock()
-			marketCapData = gotMarketCap
-			mu.Unlock()
-		},
-		func() {
-			gotProtocols, err := r.defillamaSrv.GetProtocols(ctx)
-			if err != nil {
-				errCh <- fmt.Errorf("error getting protocols: %w", err)
-				return
-			}
-			mu.Lock()
-			protocolsData = gotProtocols
-			mu.Unlock()
-		},
-		func() {
-			for data := range listingsLatestDataCh {
-				mu.Lock()
-				listingsLatestData = append(listingsLatestData, data...)
-				mu.Unlock()
-			}
-		},
-		func() {
-			defer func() {
-				<-secondListingsLatestDoneCh
-				close(listingsLatestDataCh)
-			}()
+	var (
+		fearAndGreedData models.FearAndGreed
+		marketCapData    models.MarketCap
+		protocolsData    models.GetProtocolsResponse
+		newsMap          = make(map[string]models.News)
+		listingsPage1    []models.ListingsLatestData
+		listingsPage2    []models.ListingsLatestData
+		mu               sync.Mutex
+	)
 
-			gotCoins, err := r.coinmarketcapSrv.GetListingsLatest(ctx, 1, limitCoins)
-			if err != nil {
-				errCh <- fmt.Errorf("error listings latests: %w", err)
-				return
-			}
-			listingsLatestDataCh <- gotCoins.Data
-		},
-		func() {
-			defer func() {
-				secondListingsLatestDoneCh <- struct{}{}
-			}()
+	g, ctx := errgroup.WithContext(ctx)
 
-			gotCoins, err := r.coinmarketcapSrv.GetListingsLatest(ctx, 101, limitCoins)
-			if err != nil {
-				errCh <- fmt.Errorf("error listings latests: %w", err)
-				return
-			}
-			listingsLatestDataCh <- gotCoins.Data
-		},
-	}
-
-	for _, j := range jobs {
-		wg.Add(1)
-		go func(job func()) {
-			defer wg.Done()
-			job()
-		}(j)
-	}
-
-	wg.Wait()
-	close(errCh)
-
-	for e := range errCh {
-		if e != nil {
-			return models.Report{}, e
+	g.Go(func() error {
+		news, err := r.coinstatsSrv.GetNewsByType(ctx, models.NewsTypeLatest, limitNews)
+		if err != nil {
+			return fmt.Errorf("error fetching latest news: %w", err)
 		}
+		mu.Lock()
+		for _, n := range news {
+			newsMap[n.Title] = n
+		}
+		mu.Unlock()
+		return nil
+	})
+
+	g.Go(func() error {
+		news, err := r.coinstatsSrv.GetNewsByType(ctx, models.NewsTypeTrending, limitNews)
+		if err != nil {
+			return fmt.Errorf("error fetching trending news: %w", err)
+		}
+		mu.Lock()
+		for _, n := range news {
+			newsMap[n.Title] = n
+		}
+		mu.Unlock()
+		return nil
+	})
+
+	g.Go(func() error {
+		data, err := r.coinstatsSrv.GetFearAndGreed(ctx)
+		if err != nil {
+			return fmt.Errorf("error getting fear and greed: %w", err)
+		}
+		mu.Lock()
+		fearAndGreedData = data
+		mu.Unlock()
+		return nil
+	})
+
+	g.Go(func() error {
+		data, err := r.coinstatsSrv.GetMarketCap(ctx)
+		if err != nil {
+			return fmt.Errorf("error getting market cap: %w", err)
+		}
+		mu.Lock()
+		marketCapData = data
+		mu.Unlock()
+		return nil
+	})
+
+	g.Go(func() error {
+		data, err := r.defillamaSrv.GetProtocols(ctx)
+		if err != nil {
+			return fmt.Errorf("error getting protocols: %w", err)
+		}
+		mu.Lock()
+		protocolsData = data
+		mu.Unlock()
+		return nil
+	})
+
+	g.Go(func() error {
+		data, err := r.coinmarketcapSrv.GetListingsLatest(ctx, 1, limitCoins)
+		if err != nil {
+			return fmt.Errorf("error getting listings page 1: %w", err)
+		}
+		mu.Lock()
+		listingsPage1 = data.Data
+		mu.Unlock()
+		return nil
+	})
+
+	g.Go(func() error {
+		data, err := r.coinmarketcapSrv.GetListingsLatest(ctx, 101, limitCoins)
+		if err != nil {
+			return fmt.Errorf("error getting listings page 2: %w", err)
+		}
+		mu.Lock()
+		listingsPage2 = data.Data
+		mu.Unlock()
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return models.Report{}, err
 	}
+
+	listingsLatestData := append(listingsPage1, listingsPage2...)
 
 	newsResult := make([]models.News, 0, len(newsMap))
 	for _, v := range newsMap {
@@ -176,7 +148,7 @@ func (r *Report) getData(ctx context.Context, cfg models.Config) (models.Report,
 	analyzeResult, err := r.openRouterSrv.Analyze(ctx, cfg.OpenrouterModel,
 		strings.Join([]string{
 			cap.String(),
-			tokensInPortfolio.String(),
+			fmt.Sprintf("tokens in portfolio: %s", strings.Join(cfg.Tokens, ", ")),
 			proto.String(),
 			news.String(),
 			tokensAll.String(),
