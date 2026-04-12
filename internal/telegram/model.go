@@ -2,9 +2,7 @@ package telegram
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
 	internal_models "github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/go-telegram/bot"
@@ -15,7 +13,7 @@ import (
 func (c *Client) handleModel(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatID := update.Message.Chat.ID
 	text := update.Message.Text
-	model, err := getOptionFromText(text)
+	model, err := parseCommandArg(text)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
@@ -32,13 +30,4 @@ func (c *Client) handleModel(ctx context.Context, b *bot.Bot, update *models.Upd
 	}
 
 	c.sendMessage(ctx, chatID, fmt.Sprintf("Model updated successfully: %s", model))
-}
-
-func getOptionFromText(text string) (string, error) {
-	msgs := strings.Split(text, " ")
-	if len(msgs) < 2 {
-		return "", errors.New("invalid input")
-	}
-
-	return msgs[1], nil
 }
