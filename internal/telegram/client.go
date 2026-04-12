@@ -74,6 +74,9 @@ func (c *Client) Start(ctx context.Context) {
 
 		go cr.Run(ctx, func() {
 			c.sendReport(ctx, cfg.ChatID)
+			c.updateConfig(ctx, cfg.ChatID, func(cfg *internal_models.Config) {
+				cfg.CronNextExecutionTime = c.reportCron.ExecutionTime()
+			})
 		})
 
 		c.reportCron = cr
