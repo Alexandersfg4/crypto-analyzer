@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	timeoutWork = time.Minute * 3
-	limitNews   = 20
-	limitCoins  = 100
+	timeoutFetch   = time.Minute * 2
+	timeoutAnalyze = time.Minute * 3
+	limitNews      = 20
+	limitCoins     = 100
 )
 
-func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, error) {
+func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report, error) {
 	var (
 		fearAndGreedData models.FearAndGreed
 		marketCapData    models.MarketCap
@@ -29,13 +30,13 @@ func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, 
 		mu               sync.Mutex
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeoutWork)
-	defer cancel()
+	fetchCtx, fetchCancel := context.WithTimeout(ctx, timeoutFetch)
+	defer fetchCancel()
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, fetchCtx := errgroup.WithContext(fetchCtx)
 
 	g.Go(func() error {
-		news, err := r.coinstatsSrv.GetNewsByType(ctx, models.NewsTypeLatest, limitNews)
+		news, err := r.coinstatsSrv.GetNewsByType(fetchCtx, models.NewsTypeLatest, limitNews)
 		if err != nil {
 			return fmt.Errorf("error fetching latest news: %w", err)
 		}
@@ -48,7 +49,7 @@ func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, 
 	})
 
 	g.Go(func() error {
-		news, err := r.coinstatsSrv.GetNewsByType(ctx, models.NewsTypeTrending, limitNews)
+		news, err := r.coinstatsSrv.GetNewsByType(fetchCtx, models.NewsTypeTrending, limitNews)
 		if err != nil {
 			return fmt.Errorf("error fetching trending news: %w", err)
 		}
@@ -61,7 +62,7 @@ func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, 
 	})
 
 	g.Go(func() error {
-		data, err := r.coinstatsSrv.GetFearAndGreed(ctx)
+		data, err := r.coinstatsSrv.GetFearAndGreed(fetchCtx)
 		if err != nil {
 			return fmt.Errorf("error getting fear and greed: %w", err)
 		}
@@ -72,7 +73,7 @@ func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, 
 	})
 
 	g.Go(func() error {
-		data, err := r.coinstatsSrv.GetMarketCap(ctx)
+		data, err := r.coinstatsSrv.GetMarketCap(fetchCtx)
 		if err != nil {
 			return fmt.Errorf("error getting market cap: %w", err)
 		}
@@ -83,7 +84,7 @@ func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, 
 	})
 
 	g.Go(func() error {
-		data, err := r.defillamaSrv.GetProtocols(ctx)
+		data, err := r.defillamaSrv.GetProtocols(fetchCtx)
 		if err != nil {
 			return fmt.Errorf("error getting protocols: %w", err)
 		}
@@ -94,7 +95,7 @@ func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, 
 	})
 
 	g.Go(func() error {
-		data, err := r.coinmarketcapSrv.GetListingsLatest(ctx, 1, limitCoins)
+		data, err := r.coinmarketcapSrv.GetListingsLatest(fetchCtx, 1, limitCoins)
 		if err != nil {
 			return fmt.Errorf("error getting listings page 1: %w", err)
 		}
@@ -105,7 +106,7 @@ func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, 
 	})
 
 	g.Go(func() error {
-		data, err := r.coinmarketcapSrv.GetListingsLatest(ctx, 101, limitCoins)
+		data, err := r.coinmarketcapSrv.GetListingsLatest(fetchCtx, 101, limitCoins)
 		if err != nil {
 			return fmt.Errorf("error getting listings page 2: %w", err)
 		}
@@ -145,7 +146,10 @@ func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, 
 	news := &strings.Builder{}
 	formatter.News(news, newsResult)
 
-	analyzeResult, err := r.openRouterSrv.Analyze(ctx, cfg.OpenrouterModel,
+	analyzeCtx, analyzeCancel := context.WithTimeout(ctx, timeoutAnalyze)
+	defer analyzeCancel()
+
+	analyzeResult, err := r.openRouterSrv.Analyze(analyzeCtx, cfg.OpenrouterModel,
 		strings.Join([]string{
 			cap.String(),
 			fmt.Sprintf("tokens in portfolio: %s", strings.Join(cfg.Tokens, ", ")),
