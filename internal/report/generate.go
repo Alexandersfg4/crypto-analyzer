@@ -19,9 +19,6 @@ const (
 )
 
 func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeoutWork)
-	defer cancel()
-
 	var (
 		fearAndGreedData models.FearAndGreed
 		marketCapData    models.MarketCap
