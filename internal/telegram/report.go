@@ -2,15 +2,10 @@ package telegram
 
 import (
 	"context"
-	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	log "github.com/sirupsen/logrus"
-)
-
-const (
-	timeoutReportExecution = time.Minute * 3
 )
 
 func (c *Client) handleReport(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -34,9 +29,6 @@ func (c *Client) sendReport(ctx context.Context, chatID int64) {
 		c.sendMessage(ctx, chatID, "got err while config validation: "+err.Error())
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, timeoutReportExecution)
-	defer cancel()
 
 	data, err := c.r.Generate(ctx, *config)
 	if err != nil {
