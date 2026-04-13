@@ -29,6 +29,9 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		mu               sync.Mutex
 	)
 
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeoutWork)
+	defer cancel()
+
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {

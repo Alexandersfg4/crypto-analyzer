@@ -13,8 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const timeoutDefault = time.Minute * 3
-
 type Generator interface {
 	Generate(ctx context.Context, cfg internal_models.Config) (internal_models.Report, error)
 }
@@ -35,7 +33,6 @@ func New(apiToken string, userID int64, r Generator, store ConfigStorer) (*Clien
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handleHelp),
 		bot.WithMiddlewares(auth(userID), recoverFromPanic()),
-		bot.WithCheckInitTimeout(timeoutDefault),
 	}
 
 	b, err := bot.New(apiToken, opts...)
