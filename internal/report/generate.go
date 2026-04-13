@@ -116,7 +116,7 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 	})
 
 	if err := g.Wait(); err != nil {
-		return models.Report{}, err
+		return models.Report{}, fmt.Errorf("error getting listings: %w", err)
 	}
 
 	listingsLatestData := append(listingsPage1, listingsPage2...)
