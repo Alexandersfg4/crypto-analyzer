@@ -18,7 +18,7 @@ const (
 	limitCoins  = 100
 )
 
-func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report, error) {
+func (r *Report) Generate(_ context.Context, cfg models.Config) (models.Report, error) {
 	var (
 		fearAndGreedData models.FearAndGreed
 		marketCapData    models.MarketCap
@@ -29,7 +29,7 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		mu               sync.Mutex
 	)
 
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeoutWork)
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutWork)
 	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)
