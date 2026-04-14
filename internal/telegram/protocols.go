@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	internal_models "github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	log "github.com/sirupsen/logrus"
@@ -13,7 +14,7 @@ import (
 func (c *Client) handleProtocols(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatID := update.Message.Chat.ID
 	text := bot.EscapeMarkdown(update.Message.Text)
-	protocols, err := getItemsFromText(text)
+	protocols, err := parseCommandArgs(text)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
@@ -22,18 +23,12 @@ func (c *Client) handleProtocols(ctx context.Context, b *bot.Bot, update *models
 		return
 	}
 
-	config, err := c.configStorage.SaveProtocols(protocols)
+	err = c.updateConfig(ctx, chatID, func(cfg *internal_models.Config) {
+		cfg.Protocols = protocols
+	})
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("failed to save protocols")
-		c.sendMessage(ctx, chatID, "failed to save protocols: "+err.Error())
 		return
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Protocols updated successfully: %s", strings.Join(config.Protocols, ", ")),
-		ParseMode: models.ParseModeMarkdown,
-	})
+	c.sendMessage(ctx, chatID, fmt.Sprintf("Protocols updated successfully: %s", strings.Join(protocols, ", ")))
 }

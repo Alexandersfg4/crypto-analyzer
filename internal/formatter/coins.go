@@ -10,7 +10,14 @@ import (
 	"github.com/Alexandersfg4/crypto-analyzer/pkg/direction"
 )
 
-func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
+func CoinsAll(w io.Writer, gotCoins []models.ListingsLatestData) {
+	fmt.Fprintln(w, "*All tokens*")
+	for _, c := range gotCoins {
+		showTokenInfo(w, c)
+	}
+}
+
+func CoinsInPortfolio(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 	slices.SortStableFunc(gotCoins, func(a, b models.ListingsLatestData) int {
 		if a.CmcRank < b.CmcRank {
 			return -1
@@ -22,7 +29,7 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 		return 0
 	})
 
-	fmt.Fprintln(w, "Observed tokens")
+	fmt.Fprintln(w, "*Tokens in portfolio*")
 	if len(tokens) == 0 {
 		for _, c := range gotCoins {
 			showTokenInfo(w, c)
@@ -43,7 +50,9 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 
 		showTokenInfo(w, c)
 	}
+}
 
+func CoinsGainersAndLosers(w io.Writer, gotCoins []models.ListingsLatestData) {
 	coindByChanges90d := slices.Clone(gotCoins)
 	slices.SortStableFunc(coindByChanges90d, func(a, b models.ListingsLatestData) int {
 		if a.UsdQuote().PercentChange90d < b.UsdQuote().PercentChange90d {
@@ -56,7 +65,6 @@ func Coins(w io.Writer, gotCoins []models.ListingsLatestData, tokens []string) {
 		return 0
 	})
 
-	fmt.Println()
 	fmt.Fprintln(w, "📈 Gainers by 90d change")
 	for _, c := range coindByChanges90d[:5] {
 		showTokenInfo(w, c)

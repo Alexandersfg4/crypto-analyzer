@@ -4,16 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"time"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 )
 
-type Config struct {
-	fileName string
-}
-
-func NewConfig(fileName string) *Config {
+func New(fileName string) *Config {
 	_, err := os.ReadFile(fileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -26,61 +21,21 @@ func NewConfig(fileName string) *Config {
 	return &Config{fileName: fileName}
 }
 
-func (c *Config) SaveTokens(tokens []string) (models.Config, error) {
-	config, err := c.Read()
-	if err != nil {
-		return models.Config{}, err
-	}
-	config.Tokens = tokens
-
-	data, err := json.Marshal(config)
-	if err != nil {
-		return models.Config{}, err
-	}
-	err = os.WriteFile(c.fileName, data, 0644)
-	if err != nil {
-		return models.Config{}, err
-	}
-
-	return *config, nil
+type Config struct {
+	fileName string
 }
 
-func (c *Config) SaveProtocols(protocols []string) (models.Config, error) {
-	config, err := c.Read()
+func (c *Config) Save(newConfig *models.Config) error {
+	data, err := json.MarshalIndent(newConfig, "", "  ")
 	if err != nil {
-		return models.Config{}, err
-	}
-	config.Protocols = protocols
-
-	data, err := json.Marshal(config)
-	if err != nil {
-		return models.Config{}, err
+		return err
 	}
 	err = os.WriteFile(c.fileName, data, 0644)
 	if err != nil {
-		return models.Config{}, err
+		return err
 	}
 
-	return *config, nil
-}
-
-func (c *Config) SaveCronNextExecutionTime(t time.Time) (models.Config, error) {
-	config, err := c.Read()
-	if err != nil {
-		return models.Config{}, err
-	}
-	config.CronNextExecutionTime = t
-
-	data, err := json.Marshal(config)
-	if err != nil {
-		return models.Config{}, err
-	}
-	err = os.WriteFile(c.fileName, data, 0644)
-	if err != nil {
-		return models.Config{}, err
-	}
-
-	return *config, nil
+	return nil
 }
 
 func (c *Config) Read() (*models.Config, error) {

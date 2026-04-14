@@ -5,3 +5,4 @@ The next options available:
 `/report` - generate crypto report
 `/config` - show current configuration
 `/cron 12:15` - set cron execution time every day UTC
+`/model google/gemini-3.1-pro-preview` - set model google/gemini-3.1-pro-preview from openrouter

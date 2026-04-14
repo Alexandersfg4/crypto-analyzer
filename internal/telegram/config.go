@@ -23,10 +23,12 @@ func (c *Client) handleConfig(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 
-	text := fmt.Sprintf("*Config*\nTokens: %s\nProtocols: %s\nCron Next Execution Time: %s",
+	text := fmt.Sprintf("*Config*\nTokens: %s\nProtocols: %s\nCron Next Execution Time: %s\nModel: %s",
 		strings.Join(config.Tokens, ", "),
 		strings.Join(config.Protocols, ", "),
-		config.CronNextExecutionTime.Format(time.RFC3339))
+		config.CronNextExecutionTime.Format(time.RFC3339),
+		config.OpenrouterModel,
+	)
 
 	c.sendMessage(ctx, chatID, text)
 }
