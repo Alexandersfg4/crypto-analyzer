@@ -45,14 +45,14 @@ func main() {
 		OpenrouterModel: cfg.OpenRouterModel,
 	}
 
-	data, err := r.Generate(ctx, reportCfg)
-	if err != nil {
-		logrus.Fatal("failed to generate report: ", err)
-	}
-
 	tg, err := telegram.New(cfg.TelegramToken, cfg.TelegramChatID)
 	if err != nil {
 		logrus.Fatal("failed to create telegram client: ", err)
+	}
+
+	data, err := r.Generate(ctx, reportCfg)
+	if err != nil {
+		logrus.Fatal("failed to generate report: ", err)
 	}
 
 	if err := tg.SendReport(ctx, data); err != nil {
