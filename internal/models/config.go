@@ -1,16 +1,11 @@
 package models
 
-import (
-	"errors"
-	"time"
-)
+import "errors"
 
 type Config struct {
-	Tokens                []string  `json:"tokens"`
-	Protocols             []string  `json:"protocols"`
-	CronNextExecutionTime time.Time `json:"cron_next_execution_time"`
-	OpenrouterModel       string    `json:"openrouter_model"`
-	ChatID                int64     `json:"chat_id"`
+	Tokens          []string `json:"tokens"`
+	Protocols       []string `json:"protocols"`
+	OpenrouterModel string   `json:"openrouter_model"`
 }
 
 func (c *Config) Validate() error {

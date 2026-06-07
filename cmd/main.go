@@ -2,16 +2,15 @@ package main
 
 import (
 	"context"
-	"flag"
 	"os"
 
 	"github.com/Alexandersfg4/crypto-analyzer/internal/config"
+	"github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/coinmarketcap"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/coinstats"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/defillama"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/providers/openrouter"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/report"
-	"github.com/Alexandersfg4/crypto-analyzer/internal/storage"
 	"github.com/Alexandersfg4/crypto-analyzer/internal/telegram"
 	"github.com/sirupsen/logrus"
 )
@@ -27,8 +26,6 @@ func init() {
 }
 
 func main() {
-	flag.Parse()
-
 	cfg, err := config.Load()
 	if err != nil {
 		logrus.Fatal(err)
@@ -42,12 +39,23 @@ func main() {
 	openRouterSrv := openrouter.New(cfg.OpenRouterAPIKey)
 
 	r := report.New(coinmarketcapSrv, coinstatsSrv, defillamaSrv, openRouterSrv)
+	reportCfg := models.Config{
+		Tokens:          cfg.Tokens,
+		Protocols:       cfg.Protocols,
+		OpenrouterModel: cfg.OpenRouterModel,
+	}
 
-	configStorage := storage.New("crypto-analyzer.json")
-	tg, err := telegram.New(cfg.TelegramToken, cfg.TelegramUserID, r, configStorage)
+	data, err := r.Generate(ctx, reportCfg)
+	if err != nil {
+		logrus.Fatal("failed to generate report: ", err)
+	}
+
+	tg, err := telegram.New(cfg.TelegramToken, cfg.TelegramChatID)
 	if err != nil {
 		logrus.Fatal("failed to create telegram client: ", err)
 	}
 
-	tg.Start(ctx)
+	if err := tg.SendReport(ctx, data); err != nil {
+		logrus.Fatal("failed to send report: ", err)
+	}
 }
