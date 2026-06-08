@@ -11,7 +11,7 @@ import (
 const (
 	apiHeader                = "X-API-KEY"
 	baseURL                  = "https://openapiv1.coinstats.app"
-	defaultRateLimitInterval = time.Second
+	defaultRateLimitInterval = time.Second * 2
 )
 
 func NewService(apiKey string) *Service {
