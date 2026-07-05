@@ -25,10 +25,17 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		marketCapData    models.MarketCap
 		protocolsData    models.GetProtocolsResponse
 		newsMap          = make(map[string]models.News)
-		listingsPage1    []models.ListingsLatestData
-		listingsPage2    []models.ListingsLatestData
-		mu               sync.Mutex
+		listingsCh       = make(chan []models.ListingsLatestData, 3)
+		listingsWg       sync.WaitGroup
+		newsMU           sync.Mutex
 	)
+
+	listingsWg.Add(3)
+
+	go func() {
+		listingsWg.Wait()
+		close(listingsCh)
+	}()
 
 	fetchCtx, fetchCancel := context.WithTimeout(ctx, timeoutFetch)
 	defer fetchCancel()
@@ -40,11 +47,11 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		if err != nil {
 			return fmt.Errorf("error fetching latest news: %w", err)
 		}
-		mu.Lock()
+		newsMU.Lock()
 		for _, n := range news {
 			newsMap[n.Title] = n
 		}
-		mu.Unlock()
+		newsMU.Unlock()
 		return nil
 	})
 
@@ -53,11 +60,11 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		if err != nil {
 			return fmt.Errorf("error fetching trending news: %w", err)
 		}
-		mu.Lock()
+		newsMU.Lock()
 		for _, n := range news {
 			newsMap[n.Title] = n
 		}
-		mu.Unlock()
+		newsMU.Unlock()
 		return nil
 	})
 
@@ -66,9 +73,7 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		if err != nil {
 			return fmt.Errorf("error getting fear and greed: %w", err)
 		}
-		mu.Lock()
 		fearAndGreedData = data
-		mu.Unlock()
 		return nil
 	})
 
@@ -77,9 +82,7 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		if err != nil {
 			return fmt.Errorf("error getting market cap: %w", err)
 		}
-		mu.Lock()
 		marketCapData = data
-		mu.Unlock()
 		return nil
 	})
 
@@ -88,31 +91,40 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		if err != nil {
 			return fmt.Errorf("error getting protocols: %w", err)
 		}
-		mu.Lock()
 		protocolsData = data
-		mu.Unlock()
 		return nil
 	})
 
 	g.Go(func() error {
+		defer listingsWg.Done()
+
 		data, err := r.coinmarketcapSrv.GetListingsLatest(fetchCtx, 1, limitCoins)
 		if err != nil {
 			return fmt.Errorf("error getting listings page 1: %w", err)
 		}
-		mu.Lock()
-		listingsPage1 = data.Data
-		mu.Unlock()
+		listingsCh <- data.Data
 		return nil
 	})
 
 	g.Go(func() error {
+		defer listingsWg.Done()
+
 		data, err := r.coinmarketcapSrv.GetListingsLatest(fetchCtx, 101, limitCoins)
 		if err != nil {
 			return fmt.Errorf("error getting listings page 2: %w", err)
 		}
-		mu.Lock()
-		listingsPage2 = data.Data
-		mu.Unlock()
+		listingsCh <- data.Data
+		return nil
+	})
+
+	g.Go(func() error {
+		defer listingsWg.Done()
+
+		data, err := r.coinmarketcapSrv.GetListingsLatest(fetchCtx, 201, limitCoins)
+		if err != nil {
+			return fmt.Errorf("error getting listings page 2: %w", err)
+		}
+		listingsCh <- data.Data
 		return nil
 	})
 
@@ -120,7 +132,10 @@ func (r *Report) Generate(ctx context.Context, cfg models.Config) (models.Report
 		return models.Report{}, fmt.Errorf("error getting listings: %w", err)
 	}
 
-	listingsLatestData := append(listingsPage1, listingsPage2...)
+	listingsLatestData := make([]models.ListingsLatestData, 0, 300)
+	for data := range listingsCh {
+		listingsLatestData = append(listingsLatestData, data...)
+	}
 
 	newsResult := make([]models.News, 0, len(newsMap))
 	for _, v := range newsMap {

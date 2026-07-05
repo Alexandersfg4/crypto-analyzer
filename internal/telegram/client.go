@@ -3,9 +3,6 @@ package telegram
 import (
 	"context"
 	"fmt"
-	"time"
-
-	"github.com/Alexandersfg4/crypto-analyzer/internal/cron"
 
 	internal_models "github.com/Alexandersfg4/crypto-analyzer/internal/models"
 	"github.com/go-telegram/bot"
@@ -13,117 +10,65 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Generator interface {
-	Generate(ctx context.Context, cfg internal_models.Config) (internal_models.Report, error)
-}
-
-type ConfigStorer interface {
-	Read() (*internal_models.Config, error)
-	Save(cfg *internal_models.Config) error
-}
-
 type Client struct {
-	b             *bot.Bot
-	r             Generator
-	configStorage ConfigStorer
-	reportCron    *cron.Cron
+	b      *bot.Bot
+	chatID int64
 }
 
-func New(apiToken string, userID int64, r Generator, store ConfigStorer) (*Client, error) {
-	opts := []bot.Option{
-		bot.WithDefaultHandler(handleHelp),
-		bot.WithMiddlewares(auth(userID), recoverFromPanic()),
-	}
-
-	b, err := bot.New(apiToken, opts...)
-	if nil != err {
+func New(apiToken string, chatID int64) (*Client, error) {
+	b, err := bot.New(apiToken)
+	if err != nil {
 		return nil, fmt.Errorf("failed init new bot: %w", err)
 	}
 
-	c := &Client{
-		b:             b,
-		r:             r,
-		configStorage: store,
-	}
-
-	b.RegisterHandler(bot.HandlerTypeMessageText, "help", bot.MatchTypeCommandStartOnly, handleHelp)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "report", bot.MatchTypeCommandStartOnly, c.handleReport)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "tokens", bot.MatchTypeCommandStartOnly, c.handleTokens)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "protocols", bot.MatchTypeCommandStartOnly, c.handleProtocols)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommandStartOnly, c.handleConfig)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "cron", bot.MatchTypeCommandStartOnly, c.handleCron)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "model", bot.MatchTypeCommandStartOnly, c.handleModel)
-
-	return c, nil
+	return &Client{
+		b:      b,
+		chatID: chatID,
+	}, nil
 }
 
-func (c *Client) Start(ctx context.Context) {
-	cfg, err := c.configStorage.Read()
-	if err != nil {
-		panic(err)
+func (c *Client) SendReport(ctx context.Context, report internal_models.Report) error {
+	messages := []string{
+		report.MarketCap,
+		report.Tokens.InPortfolio,
+		report.Tokens.GainersAndLoosers,
+		report.AISummary,
 	}
 
-	if !cfg.CronNextExecutionTime.IsZero() && cfg.ChatID != 0 {
-
-		now := time.Now()
-		cr := cron.New(cfg.CronNextExecutionTime)
-
-		if cfg.CronNextExecutionTime.Before(now) {
-			cr.Reset(cfg.CronNextExecutionTime)
+	for _, message := range messages {
+		if message == "" {
+			continue
 		}
 
-		go cr.Run(ctx, func() {
-			c.sendReport(ctx, cfg.ChatID)
-			c.updateConfig(ctx, cfg.ChatID, func(cfg *internal_models.Config) {
-				cfg.CronNextExecutionTime = c.reportCron.ExecutionTime()
-			})
-		})
-
-		c.reportCron = cr
-	}
-
-	c.b.Start(ctx)
-}
-
-func (c *Client) sendMessage(ctx context.Context, chatID int64, text string) error {
-	_, err := c.b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    chatID,
-		Text:      processText(text),
-		ParseMode: models.ParseModeMarkdown,
-	})
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("send messge with err ", text)
-		c.b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    chatID,
-			Text:      text,
-			ParseMode: models.ParseModeMarkdownV1,
-		})
+		if err := c.sendMessage(ctx, message); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (c *Client) updateConfig(ctx context.Context, chatID int64, upater func(*internal_models.Config)) error {
-	cfg, err := c.configStorage.Read()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("read config with error")
-		c.sendMessage(ctx, chatID, "read config with error: "+err.Error())
-		return err
+func (c *Client) sendMessage(ctx context.Context, text string) error {
+	_, err := c.b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    c.chatID,
+		Text:      processText(text),
+		ParseMode: models.ParseModeMarkdown,
+	})
+	if err == nil {
+		return nil
 	}
 
-	upater(cfg)
+	log.WithFields(log.Fields{
+		"err": err,
+	}).Warn("failed to send message with markdownv2, retrying with markdown")
 
-	err = c.configStorage.Save(cfg)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Info("save config with error")
-		c.sendMessage(ctx, chatID, "save config with error: "+err.Error())
-		return err
+	_, fallbackErr := c.b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    c.chatID,
+		Text:      text,
+		ParseMode: models.ParseModeMarkdownV1,
+	})
+	if fallbackErr != nil {
+		return fmt.Errorf("failed to send telegram message: markdownv2: %w, markdown: %v", err, fallbackErr)
 	}
 
 	return nil
